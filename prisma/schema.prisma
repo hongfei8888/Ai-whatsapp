@@ -1,0 +1,67 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum MessageDirection {
+  IN
+  OUT
+}
+
+enum MessageStatus {
+  SENT
+  FAILED
+  QUEUED
+}
+
+model Contact {
+  id             String    @id @default(cuid())
+  phoneE164      String    @unique
+  name           String?
+  cooldownUntil  DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  threads        Thread[]
+}
+
+model Thread {
+  id           String    @id @default(cuid())
+  contactId    String    @unique
+  aiEnabled    Boolean   @default(false)
+  takenOver    Boolean   @default(false)
+  takenOverAt  DateTime?
+  lastHumanAt  DateTime?
+  lastBotAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  contact      Contact   @relation(fields: [contactId], references: [id])
+  messages     Message[]
+}
+
+model Message {
+  id          String           @id @default(cuid())
+  threadId    String
+  externalId  String?          @unique
+  direction   MessageDirection
+  text        String?
+  status      MessageStatus    @default(SENT)
+  createdAt   DateTime         @default(now())
+  thread      Thread           @relation(fields: [threadId], references: [id])
+
+  @@index([threadId, createdAt])
+}
+
+model AiConfig {
+  id           String   @id @default("global")
+  systemPrompt String   
+  maxTokens    Int      @default(384)
+  temperature  Float    @default(0.4)
+  minChars     Int      @default(80)
+  stylePreset  String   @default("concise-cn")
+  updatedAt    DateTime @updatedAt
+  createdAt    DateTime @default(now())
+}
