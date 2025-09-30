@@ -193,6 +193,35 @@ export class WhatsAppService extends EventEmitter {
     try {
       logger.info('Starting WhatsApp login process...');
       
+      // 检查是否已经在处理中
+      if (this.status === 'QR') {
+        logger.info('WhatsApp client is already showing QR, returning current status');
+        return;
+      }
+      
+      if (this.status === 'INITIALIZING') {
+        logger.info('WhatsApp client is already initializing, waiting for completion...');
+        // 等待初始化完成，最多等待30秒
+        let attempts = 0;
+        const maxAttempts = 30; // 30秒
+        while (this.status === 'INITIALIZING' && attempts < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          attempts++;
+        }
+        
+        if (this.status === 'INITIALIZING') {
+          logger.warn('WhatsApp client initialization timed out, forcing restart');
+          // 超时后强制重启
+          if (this.client) {
+            await this.destroyClient();
+            await new Promise(resolve => setTimeout(resolve, 2000));
+          }
+        } else {
+          logger.info(`WhatsApp client initialization completed with status: ${this.status}`);
+          return;
+        }
+      }
+      
       // 如果已经有客户端，先销毁
       if (this.client) {
         logger.info('Destroying existing client before creating new one');
@@ -217,8 +246,13 @@ export class WhatsAppService extends EventEmitter {
             '--single-process',
             '--disable-gpu',
             '--disable-web-security',
-            '--disable-features=VizDisplayCompositor'
+            '--disable-features=VizDisplayCompositor',
+            '--disable-background-timer-throttling',
+            '--disable-backgrounding-occluded-windows',
+            '--disable-renderer-backgrounding'
           ],
+          timeout: 60000,
+          protocolTimeout: 60000,
         },
         authStrategy: new LocalAuth({ 
           dataPath: SESSION_PATH,
@@ -228,6 +262,9 @@ export class WhatsAppService extends EventEmitter {
           type: 'remote',
           remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2412.54.html',
         },
+        restartOnAuthFail: true,
+        takeoverOnConflict: true,
+        takeoverTimeoutMs: 0,
       });
 
       // 设置初始状态
@@ -241,14 +278,22 @@ export class WhatsAppService extends EventEmitter {
 
       logger.info('Starting WhatsApp client initialization...');
       
-      // 开始初始化（不等待完成，让它在后台运行）
-      this.client.initialize().catch((err) => {
-        logger.error({ err }, 'WhatsApp client initialization failed');
+      // 开始初始化并等待完成
+      try {
+        await this.client.initialize();
+        logger.info('WhatsApp client initialization completed successfully');
+      } catch (err) {
+        logger.error({ 
+          err: err instanceof Error ? {
+            name: err.name,
+            message: err.message,
+            stack: err.stack
+          } : err
+        }, 'WhatsApp client initialization failed');
         this.status = 'FAILED';
         this.state = 'OFFLINE';
-      });
-      
-      logger.info('WhatsApp client initialization started successfully');
+        throw err;
+      }
     } catch (err) {
       logger.error({ err }, 'Failed to start WhatsApp login process');
       this.status = 'FAILED';

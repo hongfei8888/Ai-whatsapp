@@ -4,6 +4,37 @@ import { logger } from '../logger';
 import { whatsappService } from '../whatsapp-service';
 import { recordMessageIfMissing } from './message-service';
 import { getOrCreateThread } from './thread-service';
+
+// 全局任务管理器
+class TaskManager {
+  private static runningTasks = new Map<string, { cancelled: boolean; controller: AbortController }>();
+
+  static createTask(batchId: string): AbortController {
+    const controller = new AbortController();
+    this.runningTasks.set(batchId, { cancelled: false, controller });
+    return controller;
+  }
+
+  static cancelTask(batchId: string): boolean {
+    const task = this.runningTasks.get(batchId);
+    if (task) {
+      task.cancelled = true;
+      task.controller.abort();
+      this.runningTasks.delete(batchId);
+      return true;
+    }
+    return false;
+  }
+
+  static isTaskCancelled(batchId: string): boolean {
+    const task = this.runningTasks.get(batchId);
+    return task ? task.cancelled : false;
+  }
+
+  static cleanupTask(batchId: string): void {
+    this.runningTasks.delete(batchId);
+  }
+}
 import { MessageDirection, MessageStatus } from '@prisma/client';
 
 // 类型定义
@@ -356,6 +387,12 @@ export class BatchService {
       throw new Error('Cannot cancel completed or cancelled batch operation');
     }
 
+    // 真正取消正在运行的任务
+    const wasCancelled = TaskManager.cancelTask(batchId);
+    if (wasCancelled) {
+      logger.info('Task cancelled successfully', { batchId } as any);
+    }
+
     await prisma.batchOperation.update({
       where: { id: batchId },
       data: {
@@ -560,6 +597,9 @@ export class BatchService {
 
     if (!batch) return;
 
+    // 创建任务控制器
+    const controller = TaskManager.createTask(batchId);
+
     try {
       await prisma.batchOperation.update({
         where: { id: batchId },
@@ -615,6 +655,20 @@ export class BatchService {
       const baseDelayMs = (60 * 1000) / ratePerMinute; // 每分钟发送数量转换为毫秒间隔
 
       for (const item of items) {
+        // 检查任务是否被取消
+        if (TaskManager.isTaskCancelled(batchId)) {
+          logger.info('Batch send cancelled by user', { batchId } as any);
+          await prisma.batchOperation.update({
+            where: { id: batchId },
+            data: {
+              status: 'cancelled',
+              completedAt: new Date(),
+              errorMessage: 'Operation cancelled by user',
+            },
+          });
+          return;
+        }
+
         try {
           const itemData = JSON.parse(item.itemData as string);
           
@@ -740,6 +794,12 @@ export class BatchService {
           data: { progress },
         });
 
+      // 在标记完成前再次检查是否被取消
+      if (TaskManager.isTaskCancelled(batchId)) {
+        logger.info('Batch send was cancelled, not marking as completed', { batchId } as any);
+        return;
+      }
+
       await prisma.batchOperation.update({
         where: { id: batchId },
         data: {
@@ -769,6 +829,9 @@ export class BatchService {
       });
 
       logger.error('Batch send failed', { batchId, error } as any);
+    } finally {
+      // 清理任务
+      TaskManager.cleanupTask(batchId);
     }
   }
 

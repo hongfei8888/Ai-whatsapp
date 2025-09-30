@@ -20,10 +20,21 @@ const S = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const handleAddAccount = async () => {
     try {
-      await api.startLogin();
-      console.log('开始登录流程');
-      // 这里可以打开一个对话框显示二维码
-      // TODO: 实现二维码显示对话框
+      // 先检查WhatsApp服务状态
+      const status = await api.getStatus();
+      console.log('WhatsApp服务状态:', status);
+      
+      if (status.status === 'QR' || status.status === 'INITIALIZING') {
+        // 如果已经在显示QR码或初始化中，不需要重复启动
+        console.log('WhatsApp服务已经在运行');
+      } else if (status.status === 'DISCONNECTED' || status.status === 'FAILED') {
+        // 如果服务离线或失败，启动登录流程
+        console.log('启动新的登录流程');
+        await api.startLogin();
+      } else {
+        // 其他状态（如READY），不需要启动
+        console.log('WhatsApp服务状态:', status.status);
+      }
     } catch (error) {
       console.error('启动登录失败:', error);
     }

@@ -320,6 +320,7 @@ export default function BatchSendPage() {
   const [statusLoading, setStatusLoading] = useState(false);
   const [autoRefreshStatus, setAutoRefreshStatus] = useState(false);
   const [statusRefreshInterval, setStatusRefreshInterval] = useState<NodeJS.Timeout | null>(null);
+  const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
     loadTemplates();
@@ -423,6 +424,39 @@ export default function BatchSendPage() {
       stopAutoRefreshStatus();
     } else {
       startAutoRefreshStatus();
+    }
+  };
+
+  const handleCancelBatch = async () => {
+    if (!currentBatchId.trim()) {
+      setError('请输入批量发送任务ID');
+      return;
+    }
+
+    if (!batchStatus || (batchStatus.status !== 'running' && batchStatus.status !== 'pending' && batchStatus.status !== 'processing')) {
+      setError('只有运行中、待处理或处理中的批量操作才能取消');
+      return;
+    }
+
+    if (!confirm('确定要取消这个批量发送任务吗？')) {
+      return;
+    }
+
+    setCancelling(true);
+    try {
+      await api.batch.cancel(currentBatchId);
+      setSuccess('批量发送任务已取消');
+      
+      // 重新检查状态以获取最新信息
+      await checkBatchStatus(currentBatchId);
+      
+      // 停止自动刷新
+      stopAutoRefreshStatus();
+    } catch (error) {
+      console.error('取消批量发送失败:', error);
+      setError('取消批量发送失败，请重试');
+    } finally {
+      setCancelling(false);
     }
   };
 
@@ -769,21 +803,56 @@ export default function BatchSendPage() {
             >
               {autoRefreshStatus ? '⏸️ 停止自动刷新' : '▶️ 自动刷新'}
             </button>
+            {batchStatus && (batchStatus.status === 'running' || batchStatus.status === 'pending' || batchStatus.status === 'processing') && (
+              <button
+                type="button"
+                style={{
+                  ...S.button,
+                  ...S.buttonDanger,
+                  ...(cancelling ? S.buttonDisabled : {}),
+                }}
+                onClick={handleCancelBatch}
+                disabled={cancelling}
+              >
+                {cancelling ? '取消中...' : '🛑 停止发送'}
+              </button>
+            )}
           </div>
 
           {batchStatus && (
             <div style={S.previewCard}>
               <div style={S.previewTitle}>任务状态详情</div>
               <div style={S.previewContent}>
-                <div><strong>状态:</strong> {batchStatus.status}</div>
-                <div><strong>进度:</strong> {batchStatus.progress}%</div>
-                <div><strong>总数:</strong> {batchStatus.totalCount}</div>
-                <div><strong>已处理:</strong> {batchStatus.processedCount}</div>
-                <div><strong>成功:</strong> {batchStatus.successCount}</div>
-                <div><strong>失败:</strong> {batchStatus.failedCount}</div>
+                <div><strong>状态:</strong> 
+                  <span style={{ 
+                    color: batchStatus.status === 'running' ? '#059669' : 
+                           batchStatus.status === 'processing' ? '#059669' :
+                           batchStatus.status === 'completed' ? '#059669' : 
+                           batchStatus.status === 'cancelled' ? '#DC2626' : 
+                           batchStatus.status === 'failed' ? '#DC2626' : '#6B7280',
+                    fontWeight: 600
+                  }}>
+                    {batchStatus.status === 'running' ? '🔄 运行中' :
+                     batchStatus.status === 'processing' ? '🔄 处理中' :
+                     batchStatus.status === 'completed' ? '✅ 已完成' :
+                     batchStatus.status === 'cancelled' ? '❌ 已取消' :
+                     batchStatus.status === 'failed' ? '❌ 失败' :
+                     batchStatus.status === 'pending' ? '⏳ 等待中' : batchStatus.status}
+                  </span>
+                </div>
+                <div><strong>进度:</strong> {batchStatus.progress || 0}%</div>
+                <div><strong>总数:</strong> {batchStatus.totalCount || 0}</div>
+                <div><strong>已处理:</strong> {batchStatus.processedCount || 0}</div>
+                <div><strong>成功:</strong> {batchStatus.successCount || 0}</div>
+                <div><strong>失败:</strong> {batchStatus.failedCount || 0}</div>
                 {batchStatus.errorMessage && (
                   <div style={{ color: '#DC2626', marginTop: '8px' }}>
                     <strong>错误信息:</strong> {batchStatus.errorMessage}
+                  </div>
+                )}
+                {batchStatus.status === 'cancelled' && (
+                  <div style={{ color: '#DC2626', marginTop: '8px', fontWeight: 600 }}>
+                    ⚠️ 任务已被用户取消
                   </div>
                 )}
               </div>

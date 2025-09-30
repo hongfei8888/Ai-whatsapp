@@ -51,6 +51,9 @@ export default function AppBar({ onAddAccount, onRefresh }: AppBarProps) {
     { href: "/dashboard", label: "仪表盘" },
     { href: "/contacts",  label: "联系人" },
     { href: "/threads",   label: "会话" },
+    { href: "/templates", label: "模板" },
+    { href: "/batch",     label: "批量操作" },
+    { href: "/knowledge", label: "知识库" },
     { href: "/settings",  label: "设置" },
   ];
 

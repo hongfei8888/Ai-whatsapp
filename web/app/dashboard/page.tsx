@@ -550,9 +550,24 @@ export default function DashboardInline() {
 
   const handleAddAccount = async () => {
     try {
-      await api.startLogin();
-      console.log('开始登录流程');
-      setShowQRDialog(true);
+      // 先检查WhatsApp服务状态
+      const status = await api.getStatus();
+      console.log('WhatsApp服务状态:', status);
+      
+      if (status.status === 'QR' || status.status === 'INITIALIZING') {
+        // 如果已经在显示QR码或初始化中，直接显示对话框
+        console.log('WhatsApp服务已经在运行，直接显示QR码');
+        setShowQRDialog(true);
+      } else if (status.status === 'DISCONNECTED' || status.status === 'FAILED') {
+        // 如果服务离线或失败，启动登录流程
+        console.log('启动新的登录流程');
+        await api.startLogin();
+        setShowQRDialog(true);
+      } else {
+        // 其他状态（如READY），直接显示对话框
+        console.log('WhatsApp服务状态:', status.status, '直接显示QR码');
+        setShowQRDialog(true);
+      }
     } catch (error) {
       console.error('启动登录失败:', error);
       alert('启动登录失败: ' + (error as Error).message);
