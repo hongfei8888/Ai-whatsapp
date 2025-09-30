@@ -664,7 +664,7 @@ export default function SettingsInline() {
                   { value: 'formal', label: '正式' }
                 ]}
               />
-            </div>
+          </div>
           </div>
           
           <div style={{ marginBottom: '20px' }}>

@@ -75,6 +75,27 @@ typings/
 # local version cache
 .wwebjs_cache/
 
+# WhatsApp session files
+.session/
+*.session
+
+# Database files
+*.db
+*.db-journal
+
+# Build outputs
+dist/
+build/
+
+# Debug files
+*.md
+!README.md
+
+# Test files
+test-*.js
+debug-*.js
+final-*.js
+
 # IDE's
 .idea
 .vscode

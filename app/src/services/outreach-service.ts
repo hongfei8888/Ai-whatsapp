@@ -1,11 +1,12 @@
 import { Message, MessageDirection, MessageStatus } from '@prisma/client';
+import { prisma } from '../prisma';
 import { appConfig } from '../config';
-import { CooldownActiveError, MessageSendError } from '../errors';
+import { MessageSendError } from '../errors';
 import { logger } from '../logger';
 import { ensureNoForbiddenKeyword } from '../guards/keyword-guard';
-import { getContactById, isCooldownActive, touchCooldown } from './contact-service';
+import { getContactById } from './contact-service';
 import { getOrCreateThread, setAiEnabled } from './thread-service';
-import { recordMessage } from './message-service';
+import { recordMessage, recordMessageIfMissing } from './message-service';
 
 export interface OutreachRequest {
   contactId: string;
@@ -30,9 +31,10 @@ export async function sendOutreach(
   const now = new Date();
   const contact = await getContactById(request.contactId);
 
-  if (isCooldownActive(contact, now)) {
-    throw new CooldownActiveError();
-  }
+  // 禁用冷却期检查 - 允许立即发送消息
+  // if (isCooldownActive(contact, now)) {
+  //   throw new CooldownActiveError();
+  // }
 
   ensureNoForbiddenKeyword(request.content);
 
@@ -41,13 +43,26 @@ export async function sendOutreach(
   await setAiEnabled(thread.id, true);
 
   try {
+    logger.info({
+      contactId: contact.id,
+      phoneE164: contact.phoneE164,
+      content: request.content,
+      threadId: thread.id
+    }, 'Attempting to send outreach message');
+    
     const sendResult = await sendMessage({
       contactId: contact.id,
       phoneE164: contact.phoneE164,
       content: request.content,
     });
 
-    const message = await recordMessage({
+    logger.info({
+      contactId: contact.id,
+      sendResult,
+      threadId: thread.id
+    }, 'Outreach message sent successfully');
+
+    const message = await recordMessageIfMissing({
       threadId: thread.id,
       direction: MessageDirection.OUT,
       text: request.content,
@@ -55,24 +70,78 @@ export async function sendOutreach(
       status: MessageStatus.SENT,
     });
 
-    const cooldownUntil = new Date(now.getTime() + appConfig.cooldownMs);
-    await touchCooldown(contact.id, cooldownUntil);
+    if (!message) {
+      logger.warn({
+        contactId: contact.id,
+        threadId: thread.id,
+        externalId: sendResult.externalId
+      }, 'Message already exists in database, finding existing message');
+      
+      // 查找现有消息
+      const existingMessage = await prisma.message.findFirst({
+        where: {
+          threadId: thread.id,
+          externalId: sendResult.externalId ?? null,
+          direction: MessageDirection.OUT,
+        },
+      });
+      
+      if (existingMessage) {
+        logger.info({
+          messageId: existingMessage.id,
+          contactId: contact.id,
+          threadId: thread.id
+        }, 'Using existing message from database');
+        return { threadId: thread.id, message: existingMessage };
+      } else {
+        logger.error({
+          contactId: contact.id,
+          threadId: thread.id,
+          externalId: sendResult.externalId
+        }, 'Could not find existing message after duplicate constraint error');
+        throw new Error('Message duplicate constraint error but existing message not found');
+      }
+    }
+
+    logger.info({
+      contactId: contact.id,
+      messageId: message.id,
+      threadId: thread.id
+    }, 'Outreach message recorded in database');
+
+    // 禁用冷却期设置 - 不设置冷却时间
+    // const cooldownUntil = new Date(now.getTime() + appConfig.cooldownMs);
+    // await touchCooldown(contact.id, cooldownUntil);
 
     return { threadId: thread.id, message };
   } catch (error) {
     logger.error({
       contactId: contact.id,
       threadId: thread.id,
-      err: error,
-    }, 'Failed to send manual outreach');
+      phoneE164: contact.phoneE164,
+      content: request.content,
+      error: error.message,
+      errorStack: error.stack,
+      errorName: error.name
+    }, 'Failed to send manual outreach via WhatsApp, but will still record message');
 
-    await recordMessage({
+    // 即使WhatsApp发送失败，也记录消息到数据库，标记为FAILED状态
+    const message = await recordMessage({
       threadId: thread.id,
       direction: MessageDirection.OUT,
       text: request.content,
+      externalId: null,
       status: MessageStatus.FAILED,
     });
 
-    throw new MessageSendError();
+    logger.info({
+      contactId: contact.id,
+      messageId: message.id,
+      threadId: thread.id,
+      status: 'FAILED'
+    }, 'Outreach message recorded in database with FAILED status');
+
+    // 不抛出异常，而是返回失败状态的消息
+    return { threadId: thread.id, message };
   }
 }

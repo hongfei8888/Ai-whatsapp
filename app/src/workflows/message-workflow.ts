@@ -4,7 +4,7 @@ import { logger } from '../logger';
 import { appConfig } from '../config';
 import { chatIdToE164 } from '../utils/phone';
 import { prisma } from '../prisma';
-import { getContactByPhone, touchCooldown } from '../services/contact-service';
+import { getContactByPhone } from '../services/contact-service';
 import {
   getOrCreateThread,
   getThreadById,
@@ -47,10 +47,7 @@ export async function handleIncomingMessage(message: WhatsAppMessage): Promise<v
     status: MessageStatus.SENT,
   });
 
-  await Promise.all([
-    touchCooldown(contact.id, null),
-    updateThread(thread.id, { lastHumanAt: now }),
-  ]);
+  await updateThread(thread.id, { lastHumanAt: now });
 
   const refreshedThread = await getThreadById(thread.id);
 
@@ -70,11 +67,7 @@ export async function handleIncomingMessage(message: WhatsAppMessage): Promise<v
     }
   }
 
-  const canSendAutoReply = await shouldSendAutoReply(thread.id, now);
-  if (!canSendAutoReply) {
-    logger.debug({ threadId: thread.id }, 'Skipping auto reply due to per-contact cooldown');
-    return;
-  }
+  // 冷却期功能已移除，允许立即发送自动回复
 
   const history = await listMessages(thread.id, 20);
 
@@ -127,12 +120,48 @@ export async function handleIncomingMessage(message: WhatsAppMessage): Promise<v
 
 export async function handleOutgoingMessage(message: WhatsAppMessage): Promise<void> {
   try {
+    logger.info({ 
+      messageId: message.id?._serialized,
+      messageTo: message.to,
+      messageBody: message.body,
+      messageFromMe: message.fromMe
+    }, 'Processing outgoing message');
+    
     const phoneE164 = chatIdToE164(message.to);
+    logger.info({ phoneE164 }, 'Converted chatId to phoneE164');
+    
     const contact = await getContactByPhone(phoneE164);
     if (!contact) {
+      logger.warn({ phoneE164 }, 'Contact not found for outgoing message, creating new contact');
+      // 创建新联系人而不是直接返回
+      const newContact = await prisma.contact.create({
+        data: {
+          phoneE164,
+          name: null,
+        },
+      });
+      logger.info({ contactId: newContact.id, phoneE164 }, 'Created new contact for outgoing message');
+      
+      const thread = await getOrCreateThread(newContact.id);
+      
+      await recordMessageIfMissing({
+        threadId: thread.id,
+        direction: MessageDirection.OUT,
+        text: message.body ?? '',
+        externalId: message.id?._serialized ?? null,
+        status: MessageStatus.SENT,
+      });
+      
+      logger.info({ 
+        threadId: thread.id, 
+        messageId: message.id?._serialized,
+        phoneE164 
+      }, 'Recorded outgoing message for new contact');
       return;
     }
 
+    logger.info({ contactId: contact.id, phoneE164 }, 'Found existing contact for outgoing message');
+    
     const thread = await getOrCreateThread(contact.id);
 
     await recordMessageIfMissing({
@@ -142,8 +171,21 @@ export async function handleOutgoingMessage(message: WhatsAppMessage): Promise<v
       externalId: message.id?._serialized ?? null,
       status: MessageStatus.SENT,
     });
+    
+    logger.info({ 
+      threadId: thread.id, 
+      messageId: message.id?._serialized,
+      phoneE164,
+      contactId: contact.id
+    }, 'Successfully recorded outgoing message');
+    
   } catch (error) {
-    logger.error({ err: error }, 'Failed to record outgoing message');
+    logger.error({ 
+      err: error, 
+      messageId: message.id?._serialized,
+      messageTo: message.to,
+      messageBody: message.body
+    }, 'Failed to record outgoing message');
   }
 }
 

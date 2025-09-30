@@ -77,3 +77,171 @@ export interface AiConfig {
   updatedAt: string;
 }
 
+// 模板相关类型定义
+export interface TemplateCategory {
+  id: string;
+  name: string;
+  description?: string;
+  icon?: string;
+  color?: string;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MessageTemplate {
+  id: string;
+  name: string;
+  content: string;
+  description?: string;
+  category: string;
+  categoryInfo?: {
+    name: string;
+    icon: string;
+    color: string;
+  };
+  tags: string[];
+  variables: string[];
+  usageCount: number;
+  lastUsedAt?: string;
+  isActive: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TemplateCreatePayload {
+  name: string;
+  content: string;
+  description?: string;
+  category?: string;
+  tags?: string[];
+  variables?: string[];
+  sortOrder?: number;
+}
+
+export interface TemplateUpdatePayload extends Partial<TemplateCreatePayload> {}
+
+export interface TemplateFilters {
+  category?: string;
+  search?: string;
+  tags?: string[];
+  isActive?: boolean;
+  limit?: number;
+  offset?: number;
+}
+
+export interface TemplateStats {
+  total: number;
+  active: number;
+  categories: Array<{
+    category: string;
+    count: number;
+  }>;
+  popular: Array<{
+    id: string;
+    name: string;
+    usageCount: number;
+  }>;
+}
+
+// 批量操作相关类型定义
+export interface BatchOperation {
+  id: string;
+  type: 'import' | 'send' | 'tag' | 'delete' | 'archive';
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
+  title: string;
+  description?: string;
+  totalCount: number;
+  processedCount: number;
+  successCount: number;
+  failedCount: number;
+  config?: any;
+  result?: any;
+  errorMessage?: string;
+  progress: number;
+  createdAt: string;
+  updatedAt: string;
+  startedAt?: string;
+  completedAt?: string;
+  createdBy: string;
+}
+
+export interface BatchImportConfig {
+  contacts: Array<{
+    phoneE164: string;
+    name?: string;
+    tags?: string[];
+    notes?: string;
+  }>;
+  tags?: string[];
+  source?: string;
+  skipDuplicates?: boolean;
+}
+
+export interface BatchSendConfig {
+  templateId?: string;
+  content?: string;
+  contactIds?: string[];
+  contactFilters?: {
+    tags?: string[];
+    source?: string;
+    createdAfter?: string;
+  };
+  scheduleAt?: string;
+  ratePerMinute?: number;
+  jitterMs?: number;
+}
+
+export interface BatchTagConfig {
+  contactIds: string[];
+  tags: string[];
+  operation: 'add' | 'remove' | 'replace';
+}
+
+// 知识库相关类型定义
+export interface FAQCategory {
+  id: string;
+  name: string;
+  description?: string;
+  icon?: string;
+  color?: string;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface KnowledgeItem {
+  id: string;
+  title: string;
+  content: string;
+  category: string;
+  categoryInfo?: {
+    name: string;
+    icon: string;
+    color: string;
+  };
+  tags: string[];
+  keywords: string[];
+  priority: number;
+  usageCount: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface KnowledgeCreatePayload {
+  title: string;
+  content: string;
+  category?: string;
+  tags?: string[];
+  keywords?: string[];
+  priority?: number;
+}
+
+export interface SearchResult extends KnowledgeItem {
+  score: number;
+  matchType: 'title' | 'content' | 'tag' | 'keyword';
+}
+

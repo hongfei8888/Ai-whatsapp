@@ -19,12 +19,6 @@ export class ThreadNotFoundError extends Error {
   }
 }
 
-export class CooldownActiveError extends Error {
-  constructor(message = 'Contact is in cooldown period') {
-    super(message);
-    this.name = 'CooldownActiveError';
-  }
-}
 
 export class OutreachGuardError extends Error {
   constructor(message = 'Outbound outreach not permitted') {

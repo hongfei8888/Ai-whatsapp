@@ -6,19 +6,17 @@ import {
   AuthenticationError,
   ContactAlreadyExistsError,
   ContactNotFoundError,
-  CooldownActiveError,
   ForbiddenKeywordError,
   MessageSendError,
   ThreadNotFoundError,
+  ValidationError,
 } from './errors';
 import {
   ContactView,
-  computeCooldownRemainingSeconds,
   createContact,
   deleteContact,
   getContactById,
   listContacts,
-  withCooldownRemaining,
 } from './services/contact-service';
 import { sendOutreach } from './services/outreach-service';
 import {
@@ -35,10 +33,38 @@ import {
   listThreads,
   setAiEnabled,
 } from './services/thread-service';
+import {
+  createTemplate,
+  listTemplates,
+  updateTemplate,
+  getTemplateById,
+  serializeTemplate,
+} from './services/template-service';
+import {
+  createCampaign,
+  listCampaigns,
+  getCampaignById,
+  getCampaignRecipients,
+  startCampaign,
+  pauseCampaign,
+  cancelCampaign,
+  previewCampaignMessages,
+  serializeCampaign,
+  serializeRecipient,
+} from './services/campaign-service';
+import { CampaignRecipientStatus, CampaignStatus } from '@prisma/client';
 import { whatsappService } from './whatsapp-service';
 import { sendError, sendOk } from './http/response';
 import { prisma } from './prisma';
 import { generatePreviewReply } from './ai/pipeline';
+import { templateRoutes, categoryRoutes } from './routes/templates';
+import { batchRoutes } from './routes/batch';
+import { knowledgeRoutes, knowledgeCategoryRoutes } from './routes/knowledge';
+import * as fs from 'fs/promises';
+import * as path from 'path';
+import { recordMessage } from './services/message-service';
+import { getOrCreateThread } from './services/thread-service';
+import { MessageDirection, MessageStatus } from '@prisma/client';
 
 interface AuthenticatedRequest extends FastifyRequest {
   user?: { token: string };
@@ -47,6 +73,7 @@ interface AuthenticatedRequest extends FastifyRequest {
 const createContactSchema = z.object({
   phoneE164: z.string().min(5),
   name: z.string().min(1).max(80).optional(),
+  consent: z.boolean().optional(),
 }).strict();
 
 const contactIdSchema = z.object({
@@ -71,12 +98,50 @@ const aiTestSchema = z.object({
 }).strict();
 
 const messagesQuerySchema = z.object({
-  limit: z.coerce.number().int().min(1).max(200).optional(),
+  limit: z.coerce.number().int().min(1).max(1000).optional(),
+});
+
+const createTemplateSchema = z.object({
+  name: z.string().min(1).max(120),
+  content: z.string().min(1).max(2000),
+  variables: z.array(z.string().min(1).max(50)).optional(),
+}).strict();
+
+const updateTemplateSchema = z.object({
+  name: z.string().min(1).max(120).optional(),
+  content: z.string().min(1).max(2000).optional(),
+  variables: z.array(z.string().min(1).max(50)).optional(),
+}).refine((value) => value.name || value.content || (value.variables && value.variables.length > 0), {
+  message: 'At least one field must be provided for update',
+});
+
+const createCampaignSchema = z.object({
+  name: z.string().min(1).max(120),
+  templateId: z.string().min(1).optional(),
+  content: z.string().min(1).max(2000).optional(),
+  contactIds: z.array(z.string().min(1)).optional(),
+  scheduleAt: z.string().datetime().optional(),
+  ratePerMinute: z.number().int().min(1).max(60).optional(),
+  jitterMs: z.number().int().min(0).max(2000).optional(),
+}).refine((value) => Boolean(value.templateId) || Boolean(value.content), {
+  message: 'templateId or content is required',
+});
+
+const campaignListQuerySchema = z.object({
+  status: z.nativeEnum(CampaignStatus).optional(),
+});
+
+const campaignRecipientsQuerySchema = z.object({
+  status: z.nativeEnum(CampaignRecipientStatus).optional(),
+  take: z.coerce.number().int().min(1).max(200).optional(),
+  cursor: z.string().optional(),
+});
+
+const previewQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(20).optional(),
 });
 
 const settingsSchema = z.object({
-  cooldownHours: z.number().int().min(1).max(168).optional(),
-  perContactReplyCooldownMinutes: z.number().int().min(0).max(1440).optional(),
   globalAiEnabled: z.boolean().optional(),
   welcomeTemplate: z.string().min(1).max(500).optional(),
 }).strict();
@@ -120,10 +185,6 @@ const errorHandler = async (error: any, request: FastifyRequest, reply: FastifyR
     return;
   }
 
-  if (error instanceof CooldownActiveError) {
-    await sendError(reply, 429, { code: 'COOLDOWN', message: error.message });
-    return;
-  }
 
   if (error instanceof ForbiddenKeywordError) {
     await sendError(reply, 422, { code: 'CONTENT', message: error.message });
@@ -149,8 +210,14 @@ const errorHandler = async (error: any, request: FastifyRequest, reply: FastifyR
 };
 
 const serializeContact = (contact: ContactView) => ({
-  ...contact,
-  cooldownUntil: contact.cooldownUntil ? contact.cooldownUntil.toISOString() : null,
+  id: contact.id,
+  phoneE164: contact.phoneE164,
+  name: contact.name,
+  consent: contact.consent,
+  optedOutAt: contact.optedOutAt ? contact.optedOutAt.toISOString() : null,
+  source: contact.source,
+  tags: contact.tags,
+  notes: contact.notes,
   createdAt: contact.createdAt.toISOString(),
   updatedAt: contact.updatedAt.toISOString(),
 });
@@ -160,15 +227,11 @@ const serializeContactSummary = (
     id: string;
     phoneE164: string;
     name: string | null;
-    cooldownUntil: Date | null;
   },
-  now = new Date(),
 ) => ({
   id: contact.id,
   phoneE164: contact.phoneE164,
   name: contact.name,
-  cooldownUntil: contact.cooldownUntil ? contact.cooldownUntil.toISOString() : null,
-  cooldownRemainingSeconds: computeCooldownRemainingSeconds(contact.cooldownUntil, now),
 });
 
 const serializeThreadListItem = (
@@ -184,7 +247,7 @@ const serializeThreadListItem = (
   updatedAt: thread.updatedAt.toISOString(),
   messagesCount: thread.messagesCount,
   latestMessageAt: thread.latestMessageAt ? thread.latestMessageAt.toISOString() : null,
-  contact: serializeContactSummary(thread.contact, now),
+  contact: serializeContactSummary(thread.contact),
 });
 
 const serializeThreadWithMessages = (
@@ -198,7 +261,7 @@ const serializeThreadWithMessages = (
   lastBotAt: thread.lastBotAt ? thread.lastBotAt.toISOString() : null,
   createdAt: thread.createdAt.toISOString(),
   updatedAt: thread.updatedAt.toISOString(),
-  contact: serializeContactSummary(thread.contact, now),
+  contact: serializeContactSummary(thread.contact),
   messages: thread.messages.map((message) => ({
     id: message.id,
     threadId: message.threadId,
@@ -221,7 +284,17 @@ export async function buildServer(): Promise<FastifyInstance> {
     credentials: true,
   });
 
-  app.addHook('onRequest', authHook);
+  // Register multipart plugin for file uploads
+  await app.register(require('@fastify/multipart'), {
+    limits: {
+      fileSize: 10 * 1024 * 1024, // 10MB limit
+    },
+  });
+
+  // 只在启用认证时注册认证钩子
+  if (isAuthEnabled) {
+    app.addHook('onRequest', authHook);
+  }
   app.setErrorHandler(errorHandler);
 
   app.get('/status', async (_request, reply) => {
@@ -245,8 +318,6 @@ export async function buildServer(): Promise<FastifyInstance> {
       state: status.state, // 新增状态机状态
       phoneE164: status.phoneE164, // 新增手机号
       lastOnline: status.lastOnline?.toISOString() ?? null, // 新增最后在线时间
-      cooldownHours: appConfig.cooldownHours,
-      perContactReplyCooldownMinutes: appConfig.perContactReplyCooldown,
       contactCount,
       latestMessageAt: latestMessage._max.createdAt
         ? latestMessage._max.createdAt.toISOString()
@@ -311,7 +382,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   app.post('/contacts', async (request, reply) => {
     const body = createContactSchema.parse(request.body);
     const contact = await createContact(body);
-    const view = serializeContact(withCooldownRemaining(contact));
+    const view = serializeContact(contact);
     return sendOk(reply, 201, view);
   });
 
@@ -322,10 +393,44 @@ export async function buildServer(): Promise<FastifyInstance> {
     });
   });
 
+  // 获取WhatsApp联系人 (必须在 /contacts/:id 之前)
+  app.get('/contacts/whatsapp', async (_request, reply) => {
+    try {
+      const whatsappContacts = await whatsappService.getWhatsAppContacts();
+      return sendOk(reply, 200, {
+        contacts: whatsappContacts,
+        count: whatsappContacts.length,
+      });
+    } catch (error) {
+      logger.error({ error }, 'Failed to get WhatsApp contacts');
+      return sendError(reply, 500, { code: 'WHATSAPP_CONTACTS_FAILED', message: 'Failed to get WhatsApp contacts' });
+    }
+  });
+
+  // 同步WhatsApp联系人到数据库 (必须在 /contacts/:id 之前)
+  app.post('/contacts/sync-whatsapp', async (_request, reply) => {
+    try {
+      const result = await whatsappService.syncContactsToDatabase();
+      return sendOk(reply, 200, {
+        message: 'WhatsApp contacts synced successfully',
+        result,
+      });
+    } catch (error) {
+      logger.error({ error }, 'Failed to sync WhatsApp contacts');
+      return sendError(reply, 500, { code: 'WHATSAPP_SYNC_FAILED', message: 'Failed to sync WhatsApp contacts' });
+    }
+  });
+
   app.delete('/contacts/:id', async (request, reply) => {
-    const params = contactIdSchema.parse(request.params);
-    await deleteContact(params.id);
-    return sendOk(reply, 200, { message: 'Contact deleted successfully' });
+    try {
+      const params = contactIdSchema.parse(request.params);
+      await deleteContact(params.id);
+      return sendOk(reply, 200, { message: 'Contact deleted successfully' });
+    } catch (error) {
+      const params = contactIdSchema.parse(request.params);
+      logger.error({ error, contactId: params.id }, 'Failed to delete contact');
+      return sendError(reply, 500, { code: 'DELETE_CONTACT_FAILED', message: 'Failed to delete contact' });
+    }
   });
 
   app.post('/contacts/:id/outreach', async (request, reply) => {
@@ -353,6 +458,59 @@ export async function buildServer(): Promise<FastifyInstance> {
     });
   });
 
+  // 文件上传API
+  app.post('/contacts/:id/upload', async (request, reply) => {
+    const params = contactIdSchema.parse(request.params);
+    
+    try {
+      const data = await (request as any).file();
+      if (!data) {
+        return sendError(reply, 400, { code: 'NO_FILE', message: 'No file uploaded' });
+      }
+
+      const contact = await getContactById(params.id);
+      const thread = await getOrCreateThread(contact.id);
+      
+      // 保存文件到临时目录
+      const uploadDir = './uploads';
+      await fs.mkdir(uploadDir, { recursive: true });
+      
+      const fileName = `${Date.now()}_${data.filename}`;
+      const filePath = path.join(uploadDir, fileName);
+      
+      // 写入文件
+      await fs.writeFile(filePath, await data.toBuffer());
+      
+      // 发送媒体消息
+      const sendResult = await whatsappService.sendMediaMessage(
+        contact.phoneE164, 
+        filePath, 
+        data.filename
+      );
+      
+      // 记录消息到数据库
+      const message = await recordMessage({
+        threadId: thread.id,
+        direction: MessageDirection.OUT,
+        text: `[文件] ${data.filename}`,
+        externalId: sendResult.id ?? null,
+        status: MessageStatus.SENT,
+      });
+      
+      // 清理临时文件
+      await fs.unlink(filePath).catch(() => {}); // 忽略删除错误
+      
+      return sendOk(reply, 202, { threadId: thread.id, message });
+      
+    } catch (error) {
+      logger.error({ error, contactId: params.id }, 'Failed to upload file');
+      return sendError(reply, 500, { 
+        code: 'UPLOAD_FAILED', 
+        message: 'File upload failed' 
+      });
+    }
+  });
+
   app.get('/threads', async (_request, reply) => {
     const threads = await listThreads();
     const now = new Date();
@@ -373,6 +531,15 @@ export async function buildServer(): Promise<FastifyInstance> {
     await setAiEnabled(params.id, false);
     const thread = await getThreadSummary(params.id);
     return sendOk(reply, 200, { thread: serializeThreadListItem(thread) });
+  });
+
+  // 设置线程AI状态
+  app.put('/threads/:id/ai', async (request, reply) => {
+    const params = contactIdSchema.parse(request.params);
+    const body = z.object({ aiEnabled: z.boolean() }).parse(request.body);
+    await setAiEnabled(params.id, body.aiEnabled);
+    const threadSummary = await getThreadSummary(params.id);
+    return sendOk(reply, 200, { thread: serializeThreadListItem(threadSummary) });
   });
 
   app.post('/threads/:id/release', async (request, reply) => {
@@ -480,16 +647,27 @@ export async function buildServer(): Promise<FastifyInstance> {
   app.get('/contacts/:id', async (request, reply) => {
     const params = contactIdSchema.parse(request.params);
     const contact = await getContactById(params.id);
-    const view = serializeContact(withCooldownRemaining(contact));
+    const view = serializeContact(contact);
     return sendOk(reply, 200, view);
+  });
+
+  // 更新系统设置
+  app.put('/settings', async (request, reply) => {
+    try {
+      const body = settingsSchema.parse(request.body);
+      // TODO: 保存到数据库或配置文件
+      logger.info({ settings: body }, 'Settings updated');
+      return sendOk(reply, 200, { message: 'Settings updated successfully', settings: body });
+    } catch (error) {
+      logger.error({ error }, 'Failed to update settings');
+      return sendError(reply, 500, { code: 'SETTINGS_UPDATE_ERROR', message: 'Failed to update settings' });
+    }
   });
 
   // 获取系统设置
   app.get('/settings', async (_request, reply) => {
     try {
       const settings = {
-        cooldownHours: appConfig.cooldownHours,
-        perContactReplyCooldownMinutes: appConfig.perContactReplyCooldown,
         globalAiEnabled: true, // 可以从数据库或配置中获取
         welcomeTemplate: appConfig.welcomeTemplate || '您好！我是AI助手，很高兴为您服务。',
         apiUrl: process.env.API_BASE_URL || 'http://localhost:4000',
@@ -503,31 +681,17 @@ export async function buildServer(): Promise<FastifyInstance> {
     }
   });
 
-  // 保存系统设置
-  app.put('/settings', async (request, reply) => {
-    try {
-      const settings = settingsSchema.parse(request.body);
-      
-      // 这里可以将设置保存到数据库或更新配置
-      // 目前作为演示，我们只返回成功消息
-      logger.info({ settings }, 'Settings updated');
-      
-      return sendOk(reply, 200, { 
-        message: 'Settings saved successfully',
-        settings: settings
-      });
-    } catch (error) {
-      logger.error({ error }, 'Failed to save settings');
-      if (error instanceof z.ZodError) {
-        return sendError(reply, 400, { 
-          code: 'VALIDATION_ERROR', 
-          message: 'Invalid settings data',
-          details: error.flatten()
-        });
-      }
-      return sendError(reply, 500, { code: 'SETTINGS_SAVE_FAILED', message: 'Failed to save settings' });
-    }
-  });
+
+  // 注册模板管理路由
+  await app.register(templateRoutes);
+  await app.register(categoryRoutes);
+  
+  // 注册批量操作路由
+  await app.register(batchRoutes);
+  
+  // 注册知识库路由
+  await app.register(knowledgeRoutes);
+  await app.register(knowledgeCategoryRoutes);
 
   if (!isAuthEnabled) {
     logger.warn('AUTH_TOKEN is not configured. Authentication is disabled.');

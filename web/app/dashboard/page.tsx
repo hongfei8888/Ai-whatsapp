@@ -369,6 +369,7 @@ export default function DashboardInline() {
   const [loading, setLoading] = useState(true);
   const [showQRDialog, setShowQRDialog] = useState(false);
 
+
   const loginStatus = useMemo(() => {
     const rawStatus = String(status?.status ?? '').toUpperCase();
     const rawState = String(status?.state ?? '').toUpperCase();

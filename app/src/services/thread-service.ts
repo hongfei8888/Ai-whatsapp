@@ -7,7 +7,6 @@ export interface ThreadContact {
   id: string;
   phoneE164: string;
   name: string | null;
-  cooldownUntil: Date | null;
 }
 
 export interface ThreadWithMessages extends Thread {
@@ -71,7 +70,6 @@ export async function listThreads(): Promise<ThreadListItem[]> {
           id: true,
           phoneE164: true,
           name: true,
-          cooldownUntil: true,
         },
       },
       _count: {
@@ -93,7 +91,6 @@ export async function getThreadSummary(threadId: string): Promise<ThreadListItem
           id: true,
           phoneE164: true,
           name: true,
-          cooldownUntil: true,
         },
       },
       _count: {
@@ -118,7 +115,6 @@ export async function getThreadWithMessages(threadId: string, limit = 50): Promi
           id: true,
           phoneE164: true,
           name: true,
-          cooldownUntil: true,
         },
       },
       messages: {

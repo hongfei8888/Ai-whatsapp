@@ -18,14 +18,38 @@ enum MessageStatus {
   QUEUED
 }
 
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  RUNNING
+  PAUSED
+  DONE
+  CANCELLED
+}
+
+enum CampaignRecipientStatus {
+  PENDING
+  PROCESSING
+  SENT
+  FAILED
+  SKIPPED
+}
+
 model Contact {
+  consent        Boolean   @default(true)
+  optedOutAt     DateTime?
+  tags           Json?     // 联系人标签
+  source         String?   // 导入来源
+  importBatchId  String?   // 批量导入批次ID
+  notes          String?   // 备注信息
+
   id             String    @id @default(cuid())
   phoneE164      String    @unique
   name           String?
-  cooldownUntil  DateTime?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   threads        Thread[]
+  campaignRecipients CampaignRecipient[]
 }
 
 model Thread {
@@ -57,11 +81,153 @@ model Message {
 
 model AiConfig {
   id           String   @id @default("global")
-  systemPrompt String   
+  systemPrompt String
   maxTokens    Int      @default(384)
   temperature  Float    @default(0.4)
   minChars     Int      @default(80)
   stylePreset  String   @default("concise-cn")
   updatedAt    DateTime @updatedAt
   createdAt    DateTime @default(now())
+}
+
+// 扩展的MessageTemplate模型
+model MessageTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  content     String
+  description String?  // 模板描述
+  category    String   @default("general") // 模板分类
+  tags        Json?    // 标签数组
+  variables   Json?    // 变量数组
+  isActive    Boolean  @default(true) // 是否激活
+  usageCount  Int      @default(0) // 使用次数
+  lastUsedAt  DateTime? // 最后使用时间
+  sortOrder   Int      @default(0) // 排序顺序
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  campaigns   Campaign[]
+
+  @@index([category, isActive])
+  @@index([usageCount, lastUsedAt])
+}
+
+// 模板分类模型
+model TemplateCategory {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  icon        String?  // 图标
+  color       String?  // 颜色
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Campaign {
+  id             String          @id @default(cuid())
+  name           String
+  templateId     String?
+  content        String?
+  scheduleAt     DateTime?
+  ratePerMinute  Int             @default(8)
+  jitterMs       Int             @default(300)
+  status         CampaignStatus  @default(DRAFT)
+  total          Int             @default(0)
+  sent           Int             @default(0)
+  failed         Int             @default(0)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  template       MessageTemplate? @relation(fields: [templateId], references: [id])
+  recipients     CampaignRecipient[]
+}
+
+model CampaignRecipient {
+  id         String                    @id @default(cuid())
+  campaignId String
+  contactId  String?
+  phoneE164  String
+  status     CampaignRecipientStatus   @default(PENDING)
+  lastError  String?
+  sentAt     DateTime?
+  tries      Int                       @default(0)
+  maxTries   Int                       @default(3)
+  createdAt  DateTime                  @default(now())
+  updatedAt  DateTime                  @updatedAt
+  campaign   Campaign                  @relation(fields: [campaignId], references: [id])
+  contact    Contact?                  @relation(fields: [contactId], references: [id])
+
+  @@index([campaignId, status])
+}
+
+// 批量操作记录表
+model BatchOperation {
+  id            String    @id @default(cuid())
+  type          String    // 'import', 'send', 'tag', 'delete', 'archive'
+  status        String    @default("pending") // 'pending', 'processing', 'completed', 'failed', 'cancelled'
+  title         String
+  description   String?
+  totalCount    Int       @default(0)
+  processedCount Int      @default(0)
+  successCount  Int       @default(0)
+  failedCount   Int       @default(0)
+  config        Json?     // 配置信息
+  result        Json?     // 结果信息
+  errorMessage  String?
+  progress      Int       @default(0) // 0-100
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  startedAt     DateTime?
+  completedAt   DateTime?
+  createdBy     String    @default("system")
+  items         BatchOperationItem[]
+
+  @@index([type, status])
+}
+
+// 批量操作明细表
+model BatchOperationItem {
+  id           String    @id @default(cuid())
+  batchId      String
+  itemIndex    Int
+  itemData     Json?     // 项目数据
+  status       String    @default("pending") // 'pending', 'processing', 'completed', 'failed', 'skipped'
+  errorMessage String?
+  result       Json?     // 处理结果
+  processedAt  DateTime?
+  createdAt    DateTime  @default(now())
+  batch        BatchOperation @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@index([batchId, status])
+}
+
+// 知识库表
+model KnowledgeBase {
+  id          String    @id @default(cuid())
+  title       String
+  content     String
+  category    String    @default("general")
+  tags        Json?     // 标签数组
+  keywords    Json?     // 关键词数组
+  priority    Int       @default(0) // 优先级
+  usageCount  Int       @default(0) // 使用次数
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  createdBy   String    @default("system")
+
+  @@index([category, isActive])
+  @@index([priority, usageCount])
+}
+
+// FAQ分类表
+model FAQCategory {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  description String?
+  icon        String?
+  color       String?
+  sortOrder   Int       @default(0)
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
 }

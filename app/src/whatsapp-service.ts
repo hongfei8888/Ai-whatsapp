@@ -29,6 +29,16 @@ export interface SendMessageResult {
   id?: string;
 }
 
+export interface WhatsAppContact {
+  id: string;
+  name?: string;
+  number: string;
+  isGroup: boolean;
+  isUser: boolean;
+  isWAContact: boolean;
+  profilePicUrl?: string;
+}
+
 export class WhatsAppService extends EventEmitter {
   private client: Client | null = null;
   private status: WhatsAppStatus = 'INITIALIZING';
@@ -112,19 +122,68 @@ export class WhatsAppService extends EventEmitter {
       this.emit('disconnected', reason);
     });
 
+    // 添加更多事件监听器来调试
+    this.client.on('message_create', async (message: Message) => {
+      logger.info({
+        messageId: message.id._serialized,
+        messageTo: message.to,
+        messageFrom: message.from,
+        messageBody: message.body,
+        messageFromMe: message.fromMe,
+        eventType: 'message_create'
+      }, 'WhatsApp message_create event received');
+    });
+
+    this.client.on('message_ack', async (message: Message, ack: any) => {
+      logger.info({
+        messageId: message.id._serialized,
+        messageTo: message.to,
+        ack: ack,
+        eventType: 'message_ack'
+      }, 'WhatsApp message_ack event received');
+    });
+
     this.client.on('message', async (message: Message) => {
       try {
+        logger.info({
+          messageId: message.id._serialized,
+          messageTo: message.to,
+          messageFrom: message.from,
+          messageBody: message.body,
+          messageFromMe: message.fromMe,
+          messageType: message.type,
+          messageTimestamp: message.timestamp,
+          hasOutgoingHandler: !!this.outgoingHandler,
+          hasIncomingHandler: !!this.incomingHandler,
+          eventType: 'message'
+        }, 'WhatsApp message event received');
+        
         if (message.fromMe) {
+          logger.info({ messageId: message.id._serialized }, 'Processing outgoing message');
           if (this.outgoingHandler) {
             await this.outgoingHandler(message);
+            logger.info({ messageId: message.id._serialized }, 'Outgoing message handler completed');
+          } else {
+            logger.warn({ messageId: message.id._serialized }, 'No outgoing handler registered');
           }
           return;
         }
+        
+        logger.info({ messageId: message.id._serialized }, 'Processing incoming message');
         if (this.incomingHandler) {
           await this.incomingHandler(message);
+          logger.info({ messageId: message.id._serialized }, 'Incoming message handler completed');
+        } else {
+          logger.warn({ messageId: message.id._serialized }, 'No incoming handler registered');
         }
       } catch (err) {
-        logger.error({ err, messageId: message.id._serialized }, 'Failed to process message');
+        logger.error({ 
+          err, 
+          messageId: message.id._serialized,
+          messageTo: message.to,
+          messageFrom: message.from,
+          messageFromMe: message.fromMe
+        }, 'Failed to process message');
       }
     });
   }
@@ -156,13 +215,19 @@ export class WhatsAppService extends EventEmitter {
             '--no-first-run',
             '--no-zygote',
             '--single-process',
-            '--disable-gpu'
+            '--disable-gpu',
+            '--disable-web-security',
+            '--disable-features=VizDisplayCompositor'
           ],
         },
         authStrategy: new LocalAuth({ 
           dataPath: SESSION_PATH,
           clientId: 'whatsapp-automation'
         }),
+        webVersionCache: {
+          type: 'remote',
+          remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2412.54.html',
+        },
       });
 
       // 设置初始状态
@@ -302,7 +367,13 @@ export class WhatsAppService extends EventEmitter {
     }
 
     const chatId = this.toChatId(phoneE164);
-    logger.debug({ chatId }, 'Sending WhatsApp message');
+    logger.info({ 
+      chatId, 
+      phoneE164, 
+      content,
+      clientStatus: this.status,
+      clientReady: !!this.client
+    }, 'Sending WhatsApp message');
 
     const client = this.client;
     if (!client) {
@@ -310,11 +381,79 @@ export class WhatsAppService extends EventEmitter {
     }
 
     const send = async () => {
+      logger.info({ chatId, content }, 'Calling client.sendMessage');
       const response = await client.sendMessage(chatId, content);
+      logger.info({ 
+        chatId, 
+        content,
+        responseId: response.id,
+        responseIdSerialized: response.id ? response.id._serialized : undefined
+      }, 'Client.sendMessage completed');
+      
+      // 手动触发outgoing handler，因为WhatsApp Web.js库的事件可能不触发
+      if (this.outgoingHandler && response.id) {
+        logger.info({ responseId: response.id._serialized }, 'Manually triggering outgoing handler');
+        try {
+          // 创建一个模拟的消息对象来触发outgoing handler
+          const mockMessage = {
+            id: response.id,
+            to: chatId,
+            from: this.phoneE164 ? `${this.phoneE164.replace('+', '')}@c.us` : 'unknown',
+            body: content,
+            fromMe: true,
+            type: 'chat',
+            timestamp: Math.floor(Date.now() / 1000),
+            _serialized: response.id._serialized
+          } as any;
+          
+          await this.outgoingHandler(mockMessage);
+          logger.info({ responseId: response.id._serialized }, 'Manual outgoing handler completed');
+        } catch (error) {
+          logger.error({ 
+            error: error.message, 
+            responseId: response.id._serialized 
+          }, 'Manual outgoing handler failed');
+        }
+      } else {
+        logger.warn({ 
+          hasOutgoingHandler: !!this.outgoingHandler,
+          hasResponseId: !!response.id
+        }, 'Cannot trigger outgoing handler manually');
+      }
+      
       return { id: response.id ? response.id._serialized : undefined };
     };
 
-    return this.retry(send, 'sendTextMessage');
+    const result = await this.retry(send, 'sendTextMessage');
+    logger.info({ 
+      chatId, 
+      phoneE164, 
+      result,
+      resultId: result.id
+    }, 'sendTextMessage completed');
+    
+    return result;
+  }
+
+  async sendMediaMessage(phoneE164: string, filePath: string, caption?: string): Promise<SendMessageResult> {
+    if (this.status !== 'READY') {
+      throw new Error('WhatsApp client not ready');
+    }
+
+    const chatId = this.toChatId(phoneE164);
+    logger.debug({ chatId, filePath }, 'Sending WhatsApp media message');
+
+    const client = this.client;
+    if (!client) {
+      throw new Error('WhatsApp client not available');
+    }
+
+    const send = async () => {
+      const response = await client.sendMessage(chatId, filePath, { caption: caption || '' });
+      return { id: response.id ? response.id._serialized : undefined };
+    };
+
+    return this.retry(send, 'sendMediaMessage');
   }
 
   private async retry<T>(fn: () => Promise<T>, operation: string): Promise<T> {
@@ -425,6 +564,142 @@ export class WhatsAppService extends EventEmitter {
   private toChatId(phoneE164: string): string {
     const digits = phoneE164.replace(/[^\d]/g, '');
     return `${digits}@c.us`;
+  }
+
+  /**
+   * 获取WhatsApp中的所有联系人
+   */
+  async getWhatsAppContacts(): Promise<WhatsAppContact[]> {
+    if (!this.client || this.status !== 'READY') {
+      throw new Error('WhatsApp client is not ready');
+    }
+
+    try {
+      logger.info('Fetching WhatsApp contacts...');
+      
+      // 获取所有聊天（包括个人和群组）
+      const chats = await this.client.getChats();
+      
+      const contacts: WhatsAppContact[] = [];
+      
+      for (const chat of chats) {
+        // 只处理个人聊天，跳过群组
+        if (chat.isGroup) {
+          continue;
+        }
+
+        const contact = chat as any; // 类型断言，因为whatsapp-web.js的类型定义可能不完整
+        
+        // 提取联系人信息
+        const contactInfo: WhatsAppContact = {
+          id: contact.id._serialized || contact.id,
+          name: contact.name || contact.pushname || undefined,
+          number: this.extractPhoneNumber(contact.id._serialized || contact.id),
+          isGroup: contact.isGroup || false,
+          isUser: contact.isUser || false,
+          isWAContact: contact.isWAContact || false,
+          profilePicUrl: contact.profilePicUrl || undefined,
+        };
+
+        // 只添加有效的个人联系人
+        if (contactInfo.number && !contactInfo.isGroup) {
+          contacts.push(contactInfo);
+        }
+      }
+
+      logger.info(`Successfully fetched ${contacts.length} WhatsApp contacts`);
+      return contacts;
+      
+    } catch (error) {
+      logger.error({ error }, 'Failed to fetch WhatsApp contacts');
+      throw new Error(`Failed to fetch WhatsApp contacts: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * 从WhatsApp ID中提取手机号
+   */
+  private extractPhoneNumber(whatsappId: string): string {
+    // WhatsApp ID格式通常是: 8613800138001@c.us
+    const match = whatsappId.match(/^(\d+)@c\.us$/);
+    if (match) {
+      const phoneNumber = match[1];
+      // 添加+号前缀
+      return phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
+    }
+    return whatsappId;
+  }
+
+  /**
+   * 同步WhatsApp联系人到数据库
+   */
+  async syncContactsToDatabase(): Promise<{ added: number; updated: number; total: number }> {
+    try {
+      logger.info('Starting WhatsApp contacts sync to database...');
+      
+      const whatsappContacts = await this.getWhatsAppContacts();
+      logger.info(`Found ${whatsappContacts.length} WhatsApp contacts to sync`);
+      
+      const { prisma } = await import('./prisma');
+      logger.info('Prisma client imported successfully');
+      
+      let added = 0;
+      let updated = 0;
+      
+      for (const whatsappContact of whatsappContacts) {
+        try {
+          // 检查联系人是否已存在
+          const existingContact = await prisma.contact.findUnique({
+            where: { phoneE164: whatsappContact.number }
+          });
+
+          const contactData = {
+            phoneE164: whatsappContact.number,
+            name: whatsappContact.name || null,
+            consent: true, // WhatsApp联系人默认同意接收消息
+            source: 'whatsapp_sync' as any,
+            tags: whatsappContact.isWAContact ? ['whatsapp_contact'] : ['whatsapp_user'] as any,
+          };
+
+          if (existingContact) {
+            // 更新现有联系人
+            await prisma.contact.update({
+              where: { phoneE164: whatsappContact.number },
+              data: {
+                name: whatsappContact.name || existingContact.name,
+                source: 'whatsapp_sync' as any,
+                tags: whatsappContact.isWAContact ? ['whatsapp_contact'] : ['whatsapp_user'] as any,
+              }
+            });
+            updated++;
+          } else {
+            // 创建新联系人
+            await prisma.contact.create({
+              data: contactData
+            });
+            added++;
+          }
+        } catch (contactError) {
+          logger.warn({ 
+            contact: whatsappContact.number, 
+            error: contactError 
+          }, 'Failed to sync individual contact');
+        }
+      }
+
+      const result = {
+        added,
+        updated,
+        total: whatsappContacts.length
+      };
+
+      logger.info({ result }, 'WhatsApp contacts sync completed');
+      return result;
+      
+    } catch (error) {
+      logger.error({ error }, 'Failed to sync WhatsApp contacts to database');
+      throw error;
+    }
   }
 }
 
