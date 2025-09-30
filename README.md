@@ -1,185 +1,210 @@
-<div align="center">
-    <br />
-    <p>
-        <a href="https://wwebjs.dev"><img src="https://github.com/wwebjs/logos/blob/main/4_Full%20Logo%20Lockup_Small/small_banner_blue.png?raw=true" title="whatsapp-web.js" alt="WWebJS Website" width="500" /></a>
-    </p>
-    <br />
-    <p>
-		<a href="https://www.npmjs.com/package/whatsapp-web.js"><img src="https://img.shields.io/npm/v/whatsapp-web.js.svg" alt="npm" /></a>
-        <a href="https://depfu.com/github/pedroslopez/whatsapp-web.js?project_id=9765"><img src="https://badges.depfu.com/badges/4a65a0de96ece65fdf39e294e0c8dcba/overview.svg" alt="Depfu" /></a>
-        <img src="https://img.shields.io/badge/WhatsApp_Web-2.3000.1017054665-brightgreen.svg" alt="WhatsApp_Web 2.2346.52" />
-        <a href="https://discord.gg/H7DqQs4"><img src="https://img.shields.io/discord/698610475432411196.svg?logo=discord" alt="Discord server" /></a>
-	</p>
-    <br />
-</div>
 
-## About
-**A WhatsApp API client that connects through the WhatsApp Web browser app**
+# 📑 WhatsApp AI 自动回复工具（MVP 单号版，DeepSeek版）
 
-The library works by launching the WhatsApp Web browser application and managing it using Puppeteer to create an instance of WhatsApp Web, thereby mitigating the risk of being blocked. The WhatsApp API client connects through the WhatsApp Web browser app, accessing its internal functions. This grants you access to nearly all the features available on WhatsApp Web, enabling dynamic handling similar to any other Node.js application.
+## 一、项目目标
 
-> [!IMPORTANT]
-> **It is not guaranteed you will not be blocked by using this method. WhatsApp does not allow bots or unofficial clients on their platform, so this shouldn't be considered totally safe.**
+基于 `whatsapp-web.js`，实现 **1 个运营号** 的最小 MVP：
 
-## Links
+* 扫码登录（会话持久化）
+* 手动录入联系人 & 发起首发消息（必须人工触发）
+* 当联系人回话后 → 进入 **AI 自动回复**（规则匹配 → DeepSeek 模型 → 兜底话术）
+* 提供最小后台（管理台）操作界面
 
-* [Website][website]
-* [Guide][guide] ([source][guide-source]) _(work in progress)_
-* [Documentation][documentation] ([source][documentation-source])
-* [WWebJS Discord][discord]
-* [GitHub][gitHub]
-* [npm][npm]
+---
 
-## Installation
+## 二、前端需求
 
-The module is now available on npm! `npm i whatsapp-web.js`
+### 技术栈
 
-> [!NOTE]
-> **Node ``v18+`` is required.**
+* **Next.js 15 + TypeScript**
+* **TailwindCSS + shadcn/ui**（UI 组件库）
+* **react-hook-form + zod**（表单验证）
 
-## QUICK STEPS TO UPGRADE NODE
+### 页面与功能
 
-### Windows
+1. **Dashboard**
 
-#### Manual
-Just get the latest LTS from the [official node website][nodejs].
+   * 显示运营号状态：
 
-#### npm
-```powershell
-sudo npm install -g n
-sudo n stable
+     * 在线/离线/待扫码
+     * 待扫码时显示二维码（轮询 `/auth/qr`）
+   * 最近活动摘要（最新消息时间 / 联系人数量）
+
+2. **Contacts**
+
+   * 添加联系人（手机号 E.164 + 姓名）
+   * 列表：姓名 / 手机号 / 冷却剩余 / 操作按钮
+   * **首发按钮** → 弹窗输入消息文本 → 调用 `POST /contacts/:id/outreach`
+
+     * 冷却中则禁用并显示剩余时间
+     * 发送成功 toast 提示
+
+3. **Threads/[id]**
+
+   * 会话消息流（入站/出站分左右显示）
+   * 显示联系人信息与 AI 状态
+   * 按钮：接管 / 释放（调用 `/threads/:id/takeover` / `release`）
+   * 可视化冷却计时（仅展示）
+
+4. **Settings**
+
+   * 只读展示：
+
+     * 冷却时长（COOLDOWN_HOURS）
+     * 单联系人自动回复冷却（PER_CONTACT_REPLY_COOLDOWN）
+
+---
+
+## 三、后端需求
+
+### 技术栈
+
+* Node.js 20 + TypeScript
+* Fastify（REST API）
+* Prisma + SQLite（存储）
+* Pino（结构化日志）
+* whatsapp-web.js（消息收发）
+* **DeepSeek API**（LLM 回复）
+
+### 环境变量（.env.example）
+
+```
+NODE_ENV=development
+DATABASE_URL=file:./dev.db
+SESSION_PATH=./.session
+PORT=4000
+
+DEEPSEEK_API_KEY=sk-xxxx
+DEEPSEEK_MODEL=deepseek-chat
+
+AUTH_TOKEN=changeme
+COOLDOWN_HOURS=24
+PER_CONTACT_REPLY_COOLDOWN=10
 ```
 
-#### Choco
-```powershell
-choco install nodejs-lts
+### 数据模型（Prisma）
+
+```prisma
+model Contact {
+  id            String   @id @default(cuid())
+  phoneE164     String   @unique
+  name          String?
+  cooldownUntil DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Thread {
+  id         String   @id @default(cuid())
+  contactId  String
+  aiEnabled  Boolean  @default(false)
+  lastHumanAt DateTime?
+  lastBotAt   DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  threadId  String
+  direction String   // IN / OUT
+  text      String?
+  status    String   // SENT / FAILED / QUEUED
+  createdAt DateTime @default(now())
+}
 ```
 
-#### Winget
-```powershell
-winget install OpenJS.NodeJS.LTS
+### API 设计
+
+* **系统**
+
+  * `GET /status` → `{ online, sessionReady, qr? }`
+  * `GET /auth/qr` → `{ qr: base64 | null }`
+* **联系人**
+
+  * `POST /contacts` → 新建联系人
+  * `GET /contacts` → 列表，含冷却剩余秒数
+* **首发消息**
+
+  * `POST /contacts/:id/outreach`
+
+    * body: `{ content: string }`
+    * 守卫：冷却期、违禁词过滤（`保证|永久|群发|官方`）
+* **线程/消息**
+
+  * `GET /threads` → 最近对话列表
+  * `GET /threads/:id/messages?limit=50` → 消息流
+  * `POST /threads/:id/takeover` → 停止 AI
+  * `POST /threads/:id/release` → 开启 AI
+
+### 自动回复管道
+
+1. 仅处理 **fromMe=false** 的入站消息
+2. 找到对应 Thread：
+
+   * 若不存在 → 新建 + `aiEnabled=true` + 发送一次欢迎语
+3. 自动回复（需满足 **单联系人节流 ≥ PER_CONTACT_REPLY_COOLDOWN 秒**）
+4. 回复顺序：
+
+   * 规则匹配（简单关键词，如“退款” → 固定模板）
+   * DeepSeek 调用
+
+     * prompt：
+
+       ```
+       你是一个WhatsApp客服助手，请用简短、礼貌、专业的方式回复用户问题。
+       要求：
+       - 中文回答
+       - 限制在120字以内
+       - 不要承诺100%保证、永久有效等
+       - 若无法回答，提示"我记录下来了，会尽快回复你"
+       ```
+   * 无结果 → 兜底话术
+
+### 错误返回格式
+
+```json
+{ "ok": false, "code": "COOLDOWN|CONTENT|VALIDATION|SEND_FAIL", "message": "..." }
 ```
 
-### Ubuntu / Debian
-```bash
-curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - &&\
-sudo apt-get install -y nodejs
+---
+
+## 四、验收标准
+
+* [ ] 能扫码登录并保持会话
+* [ ] 能添加联系人，重复手机号报错
+* [ ] 首发消息只能人工触发，冷却生效
+* [ ] 对方回话后能进入 AI 自动回复（DeepSeek 模型）
+* [ ] 所有消息写入数据库
+* [ ] Dashboard 显示在线状态或二维码
+* [ ] Contacts 可新增、搜索、发首发、显示冷却
+* [ ] Threads 显示完整消息流，可切换 AI 开关
+
+---
+
+## 五、Cursor 提示词（开发用）
+
 ```
+你是资深全栈工程师。请在当前 whatsapp-web.js 单号项目上，按以下需求实现 MVP：
 
-## Example usage
+后端：
+- 使用 Fastify + Prisma(SQLite) + Pino
+- 数据模型：Contact / Thread / Message
+- 接口：GET /status, GET /auth/qr, POST /contacts, GET /contacts, POST /contacts/:id/outreach, GET /threads, GET /threads/:id/messages, POST /threads/:id/takeover, POST /threads/:id/release
+- 守卫逻辑：首发必须人工触发，冷却COOLDOWN_HOURS，违禁词过滤
+- 自动回复：对方回话后，若 aiEnabled=true，则触发
+   1) 规则匹配
+   2) DeepSeek 模型 (调用 /v1/chat/completions，model=DEEPSEEK_MODEL，携带 DEEPSEEK_API_KEY)
+   3) 兜底话术
+- 所有消息写入数据库
+- 统一错误返回格式
 
-```js
-const { Client } = require('whatsapp-web.js');
+前端（Next.js + Tailwind + shadcn/ui）：
+- /dashboard: 显示运营号在线状态，若未登录展示二维码
+- /contacts: 列表+新增联系人；操作按钮首发消息（弹窗输入）
+- /threads/[id]: 展示消息流，按钮接管/释放
+- /settings: 只读显示冷却配置
 
-const client = new Client();
-
-client.on('qr', (qr) => {
-    // Generate and scan this code with your phone
-    console.log('QR RECEIVED', qr);
-});
-
-client.on('ready', () => {
-    console.log('Client is ready!');
-});
-
-client.on('message', msg => {
-    if (msg.body == '!ping') {
-        msg.reply('pong');
-    }
-});
-
-client.initialize();
-```
-
-Take a look at [example.js][examples] for another examples with additional use cases.  
-For further details on saving and restoring sessions, explore the provided [Authentication Strategies][auth-strategies].
+请在保持现有逻辑的前提下，增量实现以上功能，输出修改文件清单和说明。
 
 
-## Supported features
-
-| Feature  | Status |
-| ------------- | ------------- |
-| Multi Device  | ✅  |
-| Send messages  | ✅  |
-| Receive messages  | ✅  |
-| Send media (images/audio/documents)  | ✅  |
-| Send media (video)  | ✅ [(requires Google Chrome)][google-chrome]  |
-| Send stickers | ✅ |
-| Receive media (images/audio/video/documents)  | ✅  |
-| Send contact cards | ✅ |
-| Send location | ✅ |
-| Send buttons | ❌  [(DEPRECATED)][deprecated-video] |
-| Send lists | ❌  [(DEPRECATED)][deprecated-video] |
-| Receive location | ✅ | 
-| Message replies | ✅ |
-| Join groups by invite  | ✅ |
-| Get invite for group  | ✅ |
-| Modify group info (subject, description)  | ✅  |
-| Modify group settings (send messages, edit info)  | ✅  |
-| Add group participants  | ✅  |
-| Kick group participants  | ✅  |
-| Promote/demote group participants | ✅ |
-| Mention users | ✅ |
-| Mention groups | ✅ |
-| Mute/unmute chats | ✅ |
-| Block/unblock contacts | ✅ |
-| Get contact info | ✅ |
-| Get profile pictures | ✅ |
-| Set user status message | ✅ |
-| React to messages | ✅ |
-| Create polls | ✅ |
-| Channels | ✅ |
-| Vote in polls | 🔜 |
-| Communities | 🔜 |
-
-Something missing? Make an issue and let us know!
-
-## Contributing
-
-Feel free to open pull requests; we welcome contributions! However, for significant changes, it's best to open an issue beforehand. Make sure to review our [contribution guidelines][contributing] before creating a pull request. Before creating your own issue or pull request, always check to see if one already exists!
-
-## Supporting the project
-
-You can support the maintainer of this project through the links below
-
-- [Support via GitHub Sponsors][gitHub-sponsors]
-- [Support via PayPal][support-payPal]
-- [Sign up for DigitalOcean][digitalocean] and get $200 in credit when you sign up (Referral)
-
-## Disclaimer
-
-This project is not affiliated, associated, authorized, endorsed by, or in any way officially connected with WhatsApp or any of its subsidiaries or its affiliates. The official WhatsApp website can be found at [whatsapp.com][whatsapp]. "WhatsApp" as well as related names, marks, emblems and images are registered trademarks of their respective owners. Also it is not guaranteed you will not be blocked by using this method. WhatsApp does not allow bots or unofficial clients on their platform, so this shouldn't be considered totally safe.
-
-## License
-
-Copyright 2019 Pedro S Lopez  
-
-Licensed under the Apache License, Version 2.0 (the "License");  
-you may not use this project except in compliance with the License.  
-You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0.  
-
-Unless required by applicable law or agreed to in writing, software  
-distributed under the License is distributed on an "AS IS" BASIS,  
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  
-See the License for the specific language governing permissions and  
-limitations under the License.  
-
-
-[website]: https://wwebjs.dev
-[guide]: https://guide.wwebjs.dev/guide
-[guide-source]: https://github.com/wwebjs/wwebjs.dev/tree/main
-[documentation]: https://docs.wwebjs.dev/
-[documentation-source]: https://github.com/pedroslopez/whatsapp-web.js/tree/main/docs
-[discord]: https://discord.gg/H7DqQs4
-[gitHub]: https://github.com/pedroslopez/whatsapp-web.js
-[npm]: https://npmjs.org/package/whatsapp-web.js
-[nodejs]: https://nodejs.org/en/download/
-[examples]: https://github.com/pedroslopez/whatsapp-web.js/blob/master/example.js
-[auth-strategies]: https://wwebjs.dev/guide/creating-your-bot/authentication.html
-[google-chrome]: https://wwebjs.dev/guide/creating-your-bot/handling-attachments.html#caveat-for-sending-videos-and-gifs
-[deprecated-video]: https://www.youtube.com/watch?v=hv1R1rLeVVE
-[gitHub-sponsors]: https://github.com/sponsors/pedroslopez
-[support-payPal]: https://www.paypal.me/psla/
-[digitalocean]: https://m.do.co/c/73f906a36ed4
-[contributing]: https://github.com/pedroslopez/whatsapp-web.js/blob/main/CODE_OF_CONDUCT.md
-[whatsapp]: https://whatsapp.com
