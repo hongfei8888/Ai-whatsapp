@@ -24,6 +24,7 @@
   "dependencies": {
     "@fastify/cors": "^11.1.0",
     "@fastify/multipart": "^9.2.1",
+    "@fastify/websocket": "^11.2.0",
     "@pedroslopez/moduleraid": "^5.0.2",
     "@prisma/client": "^6.16.2",
     "dotenv": "^16.6.1",
@@ -43,6 +44,7 @@
     "@types/node": "^24.5.2",
     "@types/node-fetch": "^2.5.12",
     "@types/qrcode": "^1.5.5",
+    "@types/ws": "^8.18.1",
     "eslint": "^8.4.1",
     "prisma": "^6.16.2",
     "tsx": "^4.20.6",

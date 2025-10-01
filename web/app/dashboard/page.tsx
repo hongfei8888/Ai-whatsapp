@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { api } from '@/lib/api';
 import QRCodeDialog from '@/components/QRCodeDialog';
+import { useWebSocket } from '@/hooks/useWebSocket';
 
 // 类型定义
 interface ButtonProps {
@@ -282,6 +283,48 @@ export default function DashboardInline() {
   const [loading, setLoading] = useState(true);
   const [showQRDialog, setShowQRDialog] = useState(false);
 
+  // 使用WebSocket实时更新
+  const { isConnected } = useWebSocket({
+    onWhatsAppStatus: (newStatus) => {
+      console.log('🔄 收到WhatsApp状态更新:', newStatus);
+      setStatus(newStatus);
+    },
+    onQRUpdate: (qr) => {
+      console.log('📱 收到二维码更新');
+      // 更新状态中的二维码
+      setStatus(prev => ({
+        ...prev,
+        qr: qr
+      }));
+    },
+    onNewMessage: (message) => {
+      console.log('💬 收到新消息:', message);
+      // 更新对话列表
+      setThreads(prev => {
+        return prev.map(thread => {
+          if (thread.id === message.threadId) {
+            return {
+              ...thread,
+              messagesCount: thread.messagesCount + 1,
+              latestMessageAt: new Date(message.timestamp * 1000).toISOString(),
+              lastHumanAt: !message.fromMe ? new Date(message.timestamp * 1000).toISOString() : thread.lastHumanAt,
+              lastBotAt: message.fromMe ? new Date(message.timestamp * 1000).toISOString() : thread.lastBotAt
+            };
+          }
+          return thread;
+        });
+      });
+    },
+    onConnected: () => {
+      console.log('✅ WhatsApp已连接');
+      // 停止轮询，使用WebSocket更新
+    },
+    onDisconnected: () => {
+      console.log('❌ WhatsApp已断开');
+      // 可以显示离线状态
+    }
+  });
+
 
   const loginStatus = useMemo(() => {
     const rawStatus = String(status?.status ?? '').toUpperCase();
@@ -544,6 +587,11 @@ export default function DashboardInline() {
             </h1>
             <p style={{ fontSize: '16px', color: '#6B7280', margin: '8px 0 0 0' }}>
               关键指标与最新动态
+              {isConnected && (
+                <span style={{ marginLeft: '12px', fontSize: '12px', color: '#10B981' }}>
+                  🔌 实时连接
+                </span>
+              )}
             </p>
           </div>
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>

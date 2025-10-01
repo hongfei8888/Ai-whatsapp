@@ -55,14 +55,45 @@ export class WhatsAppService extends EventEmitter {
     // 客户端将在 startLogin 方法中创建
   }
 
+  private updateStatus(newStatus: WhatsAppStatus, newState: WhatsAppState, qr?: string): void {
+    const oldStatus = this.status;
+    const oldState = this.state;
+    
+    this.status = newStatus;
+    this.state = newState;
+    if (qr) {
+      this.lastQr = qr;
+    }
+
+    // 发射状态变化事件
+    this.emit('statusChanged', {
+      status: newStatus,
+      state: newState,
+      qr: this.lastQr,
+      phoneE164: this.phoneE164,
+      timestamp: Date.now()
+    });
+
+    // 如果状态发生重大变化，发射特定事件
+    if (oldStatus !== newStatus) {
+      if (newStatus === 'READY') {
+        this.emit('connected');
+      } else if (newStatus === 'DISCONNECTED' || newStatus === 'FAILED') {
+        this.emit('disconnected');
+      }
+    }
+
+    // 二维码更新事件
+    if (qr && qr !== this.lastQr) {
+      this.lastQr = qr;
+      this.emit('qrUpdated', qr);
+    }
+  }
+
   private registerEventHandlers(): void {
     if (!this.client) return;
     
     this.client.on('qr', async (qr: string) => {
-      this.status = 'QR';
-      this.state = 'NEED_QR';
-      this.lastQr = qr;
-      
       // 生成base64二维码
       try {
         this.lastQrBase64 = await QRCode.toDataURL(qr);
@@ -73,6 +104,9 @@ export class WhatsAppService extends EventEmitter {
       
       logger.info('WhatsApp QR code updated');
       this.emit('qr', qr);
+      
+      // 使用统一的状态更新方法
+      this.updateStatus('QR', 'NEED_QR', qr);
     });
 
     this.client.on('loading_screen', (percent: number, message: string) => {
@@ -94,8 +128,6 @@ export class WhatsAppService extends EventEmitter {
     });
 
     this.client.on('ready', async () => {
-      this.status = 'READY';
-      this.state = 'ONLINE';
       this.lastQr = null;
       this.lastQrBase64 = null;
       this.lastOnline = new Date();
@@ -111,15 +143,19 @@ export class WhatsAppService extends EventEmitter {
       }
       logger.info('WhatsApp client ready');
       this.emit('ready');
+      
+      // 使用统一的状态更新方法
+      this.updateStatus('READY', 'ONLINE');
     });
 
     this.client.on('disconnected', (reason: any) => {
-      this.status = 'DISCONNECTED';
-      this.state = 'OFFLINE';
       this.lastQr = null;
       this.lastQrBase64 = null;
       logger.warn({ reason }, 'WhatsApp disconnected');
       this.emit('disconnected', reason);
+      
+      // 使用统一的状态更新方法
+      this.updateStatus('DISCONNECTED', 'OFFLINE');
     });
 
     // 添加更多事件监听器来调试
@@ -141,6 +177,13 @@ export class WhatsAppService extends EventEmitter {
         ack: ack,
         eventType: 'message_ack'
       }, 'WhatsApp message_ack event received');
+      
+      // 发射WebSocket事件
+      this.emit('messageStatusUpdate', {
+        messageId: message.id._serialized,
+        ack: ack,
+        timestamp: Date.now()
+      });
     });
 
     this.client.on('message', async (message: Message) => {
@@ -157,6 +200,18 @@ export class WhatsAppService extends EventEmitter {
           hasIncomingHandler: !!this.incomingHandler,
           eventType: 'message'
         }, 'WhatsApp message event received');
+        
+        // 发射WebSocket事件 - 新消息
+        this.emit('newMessage', {
+          id: message.id._serialized,
+          from: message.from,
+          to: message.to,
+          body: message.body,
+          fromMe: message.fromMe,
+          type: message.type,
+          timestamp: message.timestamp,
+          threadId: message.from // 使用from作为threadId，实际项目中可能需要更复杂的逻辑
+        });
         
         if (message.fromMe) {
           logger.info({ messageId: message.id._serialized }, 'Processing outgoing message');
@@ -242,13 +297,13 @@ export class WhatsAppService extends EventEmitter {
             '--disable-setuid-sandbox',
             '--disable-dev-shm-usage',
             '--disable-accelerated-2d-canvas',
-            '--no-first-run',
             '--disable-gpu',
             '--disable-web-security',
             '--disable-features=VizDisplayCompositor',
             '--disable-background-timer-throttling',
             '--disable-backgrounding-occluded-windows',
             '--disable-renderer-backgrounding',
+            '--no-first-run',
             '--disable-blink-features=AutomationControlled',
             '--disable-extensions',
             '--disable-default-apps',

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '@/lib/api';
+import { useWebSocket } from '@/hooks/useWebSocket';
 
 // 类型定义
 interface ButtonProps {
@@ -364,11 +365,7 @@ export default function ThreadsInline() {
   const [selectedThread, setSelectedThread] = useState<any>(null);
   const [threadMessages, setThreadMessages] = useState<any[]>([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
-  const [messagePollingInterval, setMessagePollingInterval] = useState<NodeJS.Timeout | null>(null);
-  
-  // 自动刷新状态
-  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
-  const [autoRefreshInterval, setAutoRefreshInterval] = useState<NodeJS.Timeout | null>(null);
+  const [messageUpdateCount, setMessageUpdateCount] = useState<number>(0);
   
   // 发送消息状态
   const [newMessage, setNewMessage] = useState('');
@@ -379,47 +376,153 @@ export default function ThreadsInline() {
   const [uploadingFile, setUploadingFile] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-  // 启动自动刷新
-  const startAutoRefresh = useCallback(() => {
-    if (autoRefreshInterval) {
-      clearInterval(autoRefreshInterval);
-    }
-    
-    const interval = setInterval(async () => {
-      if (autoRefreshEnabled && !loading && !messagesLoading) {
-        console.log('🔄 自动刷新对话列表...');
-        try {
-          const result = await api.getThreads();
-          setThreads(result.threads);
-          console.log('✅ 自动刷新完成');
-        } catch (error) {
-          console.error('❌ 自动刷新失败:', error);
-        }
+  // 滚动到底部的函数
+  const scrollToBottom = useCallback(() => {
+    setTimeout(() => {
+      const container = document.getElementById('thread-message-container');
+      if (container) {
+        container.scrollTop = container.scrollHeight;
+        console.log('📜 已滚动到最新消息');
       }
-    }, 3000); // 每3秒刷新一次
+    }, 200);
+  }, []);
+
+  // 检查是否在底部附近的函数
+  const isNearBottom = useCallback(() => {
+    const container = document.getElementById('thread-message-container');
+    if (!container) return true;
     
-    setAutoRefreshInterval(interval);
-    console.log('🔄 自动刷新已启动 (每3秒)');
-  }, [autoRefreshInterval, autoRefreshEnabled, loading, messagesLoading]);
+    const threshold = 100; // 100px阈值
+    return container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
+  }, []);
 
-  // 停止自动刷新
-  const stopAutoRefresh = useCallback(() => {
-    if (autoRefreshInterval) {
-      clearInterval(autoRefreshInterval);
-      setAutoRefreshInterval(null);
-      console.log('⏹️ 自动刷新已停止');
+  // 当选择对话时自动滚动到底部
+  useEffect(() => {
+    if (selectedThread && threadMessages.length > 0) {
+      scrollToBottom();
     }
-  }, [autoRefreshInterval]);
+  }, [selectedThread, threadMessages.length, scrollToBottom]);
 
-  // 切换自动刷新状态
-  const toggleAutoRefresh = useCallback(() => {
-    setAutoRefreshEnabled(!autoRefreshEnabled);
-    if (!autoRefreshEnabled) {
-      startAutoRefresh();
-    } else {
-      stopAutoRefresh();
+  // 添加滚动事件监听器
+  useEffect(() => {
+    const container = document.getElementById('thread-message-container');
+    if (!container) return;
+
+    const handleScroll = () => {
+      // 可以在这里添加滚动位置跟踪逻辑
+      // console.log('用户正在滚动:', container.scrollTop);
+    };
+
+    container.addEventListener('scroll', handleScroll);
+    return () => {
+      container.removeEventListener('scroll', handleScroll);
+    };
+  }, [selectedThread]);
+
+  // 移除定期刷新机制，避免UI频繁晃动
+
+  // 监听消息更新计数器，但减少刷新频率避免UI晃动
+  useEffect(() => {
+    if (messageUpdateCount > 0 && selectedThread) {
+      console.log('🔄 消息更新计数器变化:', messageUpdateCount);
+      // 使用防抖机制，避免频繁刷新
+      const debounceTimer = setTimeout(() => {
+        console.log('🔄 防抖后刷新UI');
+        handleRefreshMessages();
+      }, 1000); // 1秒防抖
+      
+      return () => clearTimeout(debounceTimer);
     }
-  }, [autoRefreshEnabled, startAutoRefresh, stopAutoRefresh]);
+  }, [messageUpdateCount, selectedThread]);
+
+  // 使用WebSocket替代轮询
+  const { isConnected } = useWebSocket({
+    onConnected: () => {
+      console.log('🔌 WebSocket已连接，刷新当前对话确保数据同步');
+      if (selectedThread) {
+        // 只刷新一次，避免频繁刷新
+        setTimeout(() => {
+          handleRefreshMessages();
+        }, 1000);
+      }
+    },
+    onNewMessage: (message: any) => {
+      console.log('💬 收到新消息:', message);
+      
+      // 增加消息更新计数器
+      setMessageUpdateCount(prev => prev + 1);
+      
+      // 只刷新一次，避免频繁刷新导致UI晃动
+      if (selectedThread) {
+        console.log('🔄 收到WebSocket消息，刷新当前对话');
+        setTimeout(() => {
+          handleRefreshMessages();
+        }, 500);
+      }
+      
+      // 更新对话列表
+      setThreads(prev => {
+        return prev.map(thread => {
+          // 支持多种匹配方式（与消息匹配逻辑保持一致）
+          const contactPhone = thread.contact?.phone;
+          const messageFromClean = message.from?.replace('@c.us', '');
+          const messageToClean = message.to?.replace('@c.us', '');
+          const contactPhoneClean = contactPhone?.replace(/[^0-9]/g, '');
+          
+          const isMatchingThread = 
+            thread.id === message.threadId ||
+            contactPhone === message.from ||
+            contactPhone === message.to ||
+            messageFromClean === contactPhoneClean ||
+            messageToClean === contactPhoneClean ||
+            message.from?.includes(contactPhoneClean) ||
+            message.to?.includes(contactPhoneClean);
+            
+          if (isMatchingThread) {
+            console.log('🔄 更新对话列表:', {
+              threadId: thread.id,
+              contactPhone: thread.contact?.phone,
+              messageFrom: message.from,
+              messageTo: message.to
+            });
+            
+            return {
+              ...thread,
+              messagesCount: thread.messagesCount + 1,
+              latestMessageAt: new Date(message.timestamp * 1000).toISOString(),
+              lastHumanAt: !message.fromMe ? new Date(message.timestamp * 1000).toISOString() : thread.lastHumanAt,
+              lastBotAt: message.fromMe ? new Date(message.timestamp * 1000).toISOString() : thread.lastBotAt
+            };
+          }
+          return thread;
+        });
+      });
+    },
+    onMessageStatus: (update: any) => {
+      console.log('📊 消息状态更新:', update);
+      // 可以在这里更新消息的发送状态
+      if (selectedThread) {
+        setThreadMessages(prev => {
+          return prev.map(msg => {
+            if (msg.id === update.messageId) {
+              console.log('✅ 更新消息状态:', {
+                messageId: msg.id,
+                oldStatus: msg.status,
+                newStatus: update.ack
+              });
+              return {
+                ...msg,
+                status: update.ack,
+                statusUpdatedAt: new Date(update.timestamp).toISOString()
+              };
+            }
+            return msg;
+          });
+        });
+      }
+    }
+  });
+
 
   useEffect(() => {
     const fetchThreads = async () => {
@@ -471,27 +574,6 @@ export default function ThreadsInline() {
     fetchThreads();
   }, []);
 
-  // 清理轮询
-  useEffect(() => {
-    return () => {
-      if (messagePollingInterval) {
-        clearInterval(messagePollingInterval);
-      }
-    };
-  }, [messagePollingInterval]);
-
-  // 自动刷新管理
-  useEffect(() => {
-    // 组件挂载时启动自动刷新
-    if (autoRefreshEnabled) {
-      startAutoRefresh();
-    }
-    
-    // 清理函数
-    return () => {
-      stopAutoRefresh();
-    };
-  }, [autoRefreshEnabled]);
 
 
 
@@ -599,52 +681,31 @@ export default function ThreadsInline() {
       setSelectedThread(thread);
       
       try {
-        // 尝试获取真实的消息数据
-        const threadData = await api.getThreadMessages(threadId);
+        // 尝试获取真实的消息数据，使用更大的limit确保获取最新消息
+        console.log('🔄 正在获取对话消息，线程ID:', threadId);
+        const threadData = await api.getThreadMessages(threadId, 1000);
+        console.log('📊 获取到消息数量:', threadData.messages?.length || 0);
         setThreadMessages(threadData.messages || []);
+        
+        // 如果获取到的消息为空，显示提示
+        if (!threadData.messages || threadData.messages.length === 0) {
+          console.log('⚠️ 该对话暂无消息');
+        }
+        
+        // 设置选择对话后，再次刷新确保获取最新消息
+        setTimeout(() => {
+          console.log('🔄 选择对话后再次刷新确保数据最新');
+          handleRefreshMessages();
+        }, 1000);
+        
       } catch (apiError) {
-        console.warn('获取消息失败，使用模拟数据:', apiError);
-        // 使用模拟消息数据
-        setThreadMessages([
-          {
-            id: '1',
-            text: '你好，我想了解一下你们的产品',
-            direction: 'IN',
-            status: 'SENT',
-            createdAt: new Date(Date.now() - 3600000).toISOString()
-          },
-          {
-            id: '2',
-            text: '您好！很高兴为您介绍我们的产品。我们主要提供...',
-            direction: 'OUT',
-            status: 'SENT',
-            createdAt: new Date(Date.now() - 3500000).toISOString()
-          },
-          {
-            id: '3',
-            text: '听起来不错，价格如何？',
-            direction: 'IN',
-            status: 'SENT',
-            createdAt: new Date(Date.now() - 1800000).toISOString()
-          },
-          {
-            id: '4',
-            text: '我们的价格非常有竞争力，具体价格会根据您的需求来定制。您方便告诉我您的具体需求吗？',
-            direction: 'OUT',
-            status: 'SENT',
-            createdAt: new Date(Date.now() - 1700000).toISOString()
-          }
-        ]);
+        console.error('❌ 获取消息失败:', apiError);
+        // 不使用模拟数据，而是显示空状态
+        setThreadMessages([]);
+        alert('获取消息失败: ' + (apiError as Error).message);
       }
       
       setShowThreadDialog(true);
-      
-      // 如果AI开启，开始轮询检查新消息
-      if (thread.aiEnabled) {
-        setTimeout(() => {
-          startMessagePolling();
-        }, 1000);
-      }
       
     } catch (error) {
       console.error('打开对话失败:', error);
@@ -720,13 +781,7 @@ export default function ThreadsInline() {
             console.log('消息发送成功，已更新消息列表');
             
             // 自动滚动到最新消息
-            setTimeout(() => {
-              const container = document.getElementById('thread-message-container');
-              if (container) {
-                container.scrollTop = container.scrollHeight;
-                console.log('📜 已自动滚动到最新消息');
-              }
-            }, 100);
+            scrollToBottom();
             
             // 如果AI开启，继续等待AI回复（最多等待15秒）
             if (selectedThread.aiEnabled) {
@@ -758,13 +813,7 @@ export default function ThreadsInline() {
                         console.log('✅ 检测到AI回复，消息列表已更新！');
                         
                         // 自动滚动到最新消息
-                        setTimeout(() => {
-                          const container = document.getElementById('thread-message-container');
-                          if (container) {
-                            container.scrollTop = container.scrollHeight;
-                            console.log('📜 AI回复后已自动滚动到最新消息');
-                          }
-                        }, 100);
+                        scrollToBottom();
                         return;
                       }
                   
@@ -846,13 +895,7 @@ export default function ThreadsInline() {
       console.log('消息列表已刷新');
       
       // 自动滚动到最新消息
-      setTimeout(() => {
-        const container = document.getElementById('thread-message-container');
-        if (container) {
-          container.scrollTop = container.scrollHeight;
-          console.log('📜 刷新后已自动滚动到最新消息');
-        }
-      }, 100);
+      scrollToBottom();
     } catch (error) {
       console.error('刷新消息失败:', error);
       alert('刷新消息失败: ' + (error as Error).message);
@@ -861,51 +904,6 @@ export default function ThreadsInline() {
     }
   };
 
-  // 开始轮询检查新消息
-  const startMessagePolling = () => {
-    if (!selectedThread || messagePollingInterval) return;
-    
-    console.log('🔄 开始轮询检查新消息，线程ID:', selectedThread.id);
-    const interval = setInterval(async () => {
-      try {
-        console.log('🔍 正在检查新消息...');
-        const threadData = await api.getThreadMessages(selectedThread.id, 1000);
-        const newMessages = threadData.messages || [];
-        
-        console.log('📊 当前消息数量:', newMessages.length, '上次消息数量:', threadMessages.length);
-        
-        // 检查是否有新消息（更严格的检查）
-        setThreadMessages(prevMessages => {
-          const prevLength = prevMessages.length;
-          if (newMessages.length > prevLength) {
-            console.log('✅ 检测到新消息！从', prevLength, '条增加到', newMessages.length, '条');
-            console.log('📝 新消息内容:', newMessages.slice(prevLength));
-            return newMessages;
-          } else if (newMessages.length !== prevLength) {
-            console.log('🔄 消息数量变化，更新列表');
-            return newMessages;
-          } else {
-            console.log('⏸️ 无新消息');
-            return prevMessages;
-          }
-        });
-        
-      } catch (error) {
-        console.error('❌ 轮询检查消息时出错:', error);
-      }
-    }, 2000); // 改为每2秒检查一次，更频繁
-    
-    setMessagePollingInterval(interval);
-  };
-
-  // 停止轮询检查新消息
-  const stopMessagePolling = () => {
-    if (messagePollingInterval) {
-      console.log('停止轮询检查新消息');
-      clearInterval(messagePollingInterval);
-      setMessagePollingInterval(null);
-    }
-  };
 
   // 表情选择器
   const emojis = [
@@ -968,13 +966,7 @@ export default function ThreadsInline() {
           console.log('文件上传成功，已更新消息列表');
           
           // 自动滚动到最新消息
-          setTimeout(() => {
-            const container = document.getElementById('thread-message-container');
-            if (container) {
-              container.scrollTop = container.scrollHeight;
-              console.log('📜 文件上传后已自动滚动到最新消息');
-            }
-          }, 100);
+          scrollToBottom();
         } catch (fetchError) {
           console.warn('重新获取消息失败，使用乐观更新:', fetchError);
           // 如果重新获取失败，使用乐观更新
@@ -1048,7 +1040,10 @@ export default function ThreadsInline() {
             >
               对话管理
             </h1>
-            <Tag text="管理所有对话和AI回复状态" tone="info" />
+            <Tag 
+              text={`管理所有对话和AI回复状态${isConnected ? ' - 🔌 实时连接' : ''}`} 
+              tone="info" 
+            />
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
             <Button 
@@ -1056,23 +1051,11 @@ export default function ThreadsInline() {
               onClick={handleRefresh} 
               aria-label="刷新数据"
               style={{
-                backgroundColor: autoRefreshEnabled ? '#E0F2FE' : '#F5F5F5',
-                color: autoRefreshEnabled ? '#0277BD' : '#666666'
+                backgroundColor: '#E0F2FE',
+                color: '#0277BD'
               }}
             >
               🔄 手动刷新
-            </Button>
-            <Button 
-              kind="ghost" 
-              onClick={toggleAutoRefresh}
-              aria-label="切换自动刷新"
-              style={{
-                backgroundColor: autoRefreshEnabled ? '#E8F5E8' : '#F5F5F5',
-                color: autoRefreshEnabled ? '#2E7D32' : '#666666',
-                border: autoRefreshEnabled ? '1px solid #4CAF50' : '1px solid #E0E0E0'
-              }}
-            >
-              {autoRefreshEnabled ? '⏸️ 停止自动刷新' : '▶️ 启动自动刷新'} (3秒)
             </Button>
           </div>
         </div>
@@ -1253,13 +1236,7 @@ export default function ThreadsInline() {
                 </Button>
                 <Button
                   kind="ghost"
-                  onClick={() => {
-                    const container = document.getElementById('thread-message-container');
-                    if (container) {
-                      container.scrollTop = container.scrollHeight;
-                      console.log('📜 手动滚动到最新消息');
-                    }
-                  }}
+                  onClick={scrollToBottom}
                   style={{ 
                     fontSize: '12px', 
                     padding: '6px 12px'
@@ -1270,7 +1247,6 @@ export default function ThreadsInline() {
                 <Button
                   kind="ghost"
                   onClick={() => {
-                    stopMessagePolling();
                     setShowThreadDialog(false);
                   }}
                   style={{ fontSize: '12px', padding: '6px 12px' }}
@@ -1289,7 +1265,7 @@ export default function ThreadsInline() {
                 overflowY: 'auto',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '12px'
+                minHeight: '400px' // 设置最小高度确保有足够空间
               }}>
               {messagesLoading ? (
                 <div style={{ textAlign: 'center', padding: '40px' }}>
@@ -1305,13 +1281,21 @@ export default function ThreadsInline() {
                   <p style={{ color: '#6B7280', fontSize: '14px' }}>加载消息中...</p>
                 </div>
               ) : threadMessages.length > 0 ? (
-                threadMessages.map((message, index) => (
+                threadMessages
+                  .sort((a, b) => {
+                    // 按时间排序，最早的消息在前，最新的消息在后
+                    const timeA = new Date(a.createdAt || a.timestamp || 0).getTime();
+                    const timeB = new Date(b.createdAt || b.timestamp || 0).getTime();
+                    return timeA - timeB;
+                  })
+                  .map((message, index) => (
                   <div
                     key={message.id || index}
                     style={{
                       display: 'flex',
                       justifyContent: message.direction === 'OUT' ? 'flex-end' : 'flex-start',
-                      marginBottom: '8px'
+                      marginBottom: '12px',
+                      marginTop: '4px'
                     }}
                   >
                     <div style={{

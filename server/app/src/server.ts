@@ -2,6 +2,7 @@ import Fastify, { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { z, ZodError } from 'zod';
 import { appConfig, isAuthEnabled } from './config';
 import { logger } from './logger';
+import { webSocketService } from './websocket-service';
 import {
   AuthenticationError,
   ContactAlreadyExistsError,
@@ -290,6 +291,9 @@ export async function buildServer(): Promise<FastifyInstance> {
       fileSize: 10 * 1024 * 1024, // 10MB limit
     },
   });
+
+  // Register WebSocket plugin
+  await app.register(require('@fastify/websocket'));
 
   // 只在启用认证时注册认证钩子
   if (isAuthEnabled) {
@@ -702,6 +706,9 @@ export async function buildServer(): Promise<FastifyInstance> {
   if (!isAuthEnabled) {
     logger.warn('AUTH_TOKEN is not configured. Authentication is disabled.');
   }
+
+  // Initialize WebSocket service
+  webSocketService.initialize(app);
 
   return app;
 }

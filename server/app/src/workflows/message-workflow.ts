@@ -203,7 +203,7 @@ async function sendAndRecordReply(args: SendAndRecordArgs): Promise<void> {
 
     const result = await whatsappService.sendTextMessage(args.phoneE164, args.text);
     await Promise.all([
-      recordMessage({
+      recordMessageIfMissing({
         threadId: args.threadId,
         direction: MessageDirection.OUT,
         text: args.text,
