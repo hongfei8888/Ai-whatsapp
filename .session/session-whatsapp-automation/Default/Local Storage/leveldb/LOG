@@ -1,2 +1,3 @@
-2025/10/01-00:03:12.046 105bc Creating DB D:\projects\whatsapp-web.js-main 2025.9.29 自动回复养号\.session\session-whatsapp-automation\Default\Local Storage\leveldb since it was missing.
-2025/10/01-00:03:12.051 105bc Reusing MANIFEST D:\projects\whatsapp-web.js-main 2025.9.29 自动回复养号\.session\session-whatsapp-automation\Default\Local Storage\leveldb/MANIFEST-000001
+2025/10/01-12:03:22.464 1013c Reusing MANIFEST D:\projects\whatsapp-web.js-main 2025.9.29 自动回复养号\.session\session-whatsapp-automation\Default\Local Storage\leveldb/MANIFEST-000001
+2025/10/01-12:03:22.465 1013c Recovering log #3
+2025/10/01-12:03:22.465 1013c Reusing old log D:\projects\whatsapp-web.js-main 2025.9.29 自动回复养号\.session\session-whatsapp-automation\Default\Local Storage\leveldb/000003.log 

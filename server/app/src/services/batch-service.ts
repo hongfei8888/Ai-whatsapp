@@ -759,6 +759,7 @@ export class BatchService {
           } as any);
 
         } catch (error) {
+          const itemData = JSON.parse(item.itemData as string);
           logger.error('Batch message send failed', { 
             batchId, 
             contactId: itemData.contactId,

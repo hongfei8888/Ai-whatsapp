@@ -329,9 +329,14 @@ export async function buildServer(): Promise<FastifyInstance> {
   app.post('/auth/login/start', async (_request, reply) => {
     try {
       logger.info('Received login start request');
+      
+      // 调用真正的WhatsApp服务启动登录
       await whatsappService.startLogin();
       logger.info('Login process started successfully');
-      return sendOk(reply, 200, { message: 'Login process started' });
+      return sendOk(reply, 200, { 
+        message: 'Login process started successfully'
+      });
+      
     } catch (error) {
       logger.error({ 
         error: error instanceof Error ? {
@@ -350,6 +355,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   // 增强的二维码端点
   app.get('/auth/qr', async (_request, reply) => {
     try {
+      // 获取真正的WhatsApp状态和二维码
       const status = whatsappService.getStatus();
       return sendOk(reply, 200, {
         qr: status.qr,

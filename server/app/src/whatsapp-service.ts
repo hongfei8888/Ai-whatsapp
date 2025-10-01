@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events';
-import { Client, LocalAuth, Message } from '../../index.js';
+import { Client, LocalAuth, Message } from 'whatsapp-web.js';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import QRCode from 'qrcode';
@@ -236,23 +236,46 @@ export class WhatsAppService extends EventEmitter {
       this.client = new Client({
         puppeteer: {
           headless: true,
+          executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
           args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
             '--disable-dev-shm-usage',
             '--disable-accelerated-2d-canvas',
             '--no-first-run',
-            '--no-zygote',
-            '--single-process',
             '--disable-gpu',
             '--disable-web-security',
             '--disable-features=VizDisplayCompositor',
             '--disable-background-timer-throttling',
             '--disable-backgrounding-occluded-windows',
-            '--disable-renderer-backgrounding'
+            '--disable-renderer-backgrounding',
+            '--disable-blink-features=AutomationControlled',
+            '--disable-extensions',
+            '--disable-default-apps',
+            '--disable-popup-blocking',
+            '--disable-background-networking',
+            '--disable-sync',
+            '--disable-translate',
+            '--hide-scrollbars',
+            '--metrics-recording-only',
+            '--mute-audio',
+            '--no-default-browser-check',
+            '--safebrowsing-disable-auto-update',
+            '--disable-ipc-flooding-protection',
+            '--disable-renderer-backgrounding',
+            '--disable-backgrounding-occluded-windows',
+            '--disable-client-side-phishing-detection',
+            '--disable-component-extensions-with-background-pages',
+            '--disable-default-apps',
+            '--disable-extensions',
+            '--disable-features=TranslateUI',
+            '--disable-hang-monitor',
+            '--disable-prompt-on-repost',
+            '--disable-domain-reliability',
+            '--disable-features=VizDisplayCompositor'
           ],
           timeout: 60000,
-          protocolTimeout: 60000,
+          ignoreDefaultArgs: ['--disable-extensions'],
         },
         authStrategy: new LocalAuth({ 
           dataPath: SESSION_PATH,
@@ -455,7 +478,7 @@ export class WhatsAppService extends EventEmitter {
           logger.info({ responseId: response.id._serialized }, 'Manual outgoing handler completed');
         } catch (error) {
           logger.error({ 
-            error: error.message, 
+            error: error instanceof Error ? error.message : String(error), 
             responseId: response.id._serialized 
           }, 'Manual outgoing handler failed');
         }
@@ -541,7 +564,7 @@ export class WhatsAppService extends EventEmitter {
     if (clientToCleanup) {
       // 异步销毁客户端
       setImmediate(() => {
-        clientToCleanup.destroy().catch((err) => {
+        clientToCleanup.destroy().catch((err: any) => {
           logger.warn({ err }, 'Client destroy failed in background');
         });
       });

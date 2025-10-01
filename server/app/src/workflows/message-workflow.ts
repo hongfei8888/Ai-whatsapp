@@ -1,4 +1,4 @@
-import { Message as WhatsAppMessage } from '../../../index.js';
+import { Message as WhatsAppMessage } from 'whatsapp-web.js';
 import { MessageDirection, MessageStatus } from '@prisma/client';
 import { logger } from '../logger';
 import { appConfig } from '../config';

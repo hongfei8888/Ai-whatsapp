@@ -120,9 +120,9 @@ export async function sendOutreach(
       threadId: thread.id,
       phoneE164: contact.phoneE164,
       content: request.content,
-      error: error.message,
-      errorStack: error.stack,
-      errorName: error.name
+      error: error instanceof Error ? error.message : String(error),
+      errorStack: error instanceof Error ? error.stack : undefined,
+      errorName: error instanceof Error ? error.name : 'UnknownError'
     }, 'Failed to send manual outreach via WhatsApp, but will still record message');
 
     // 即使WhatsApp发送失败，也记录消息到数据库，标记为FAILED状态
