@@ -274,94 +274,7 @@ const Item = ({ label, value, style = {} }: ItemProps) => (
   </div>
 );
 
-// 样式字典
-const S = {
-  pageHeader: { 
-    display: "flex", alignItems: "center", justifyContent: "space-between",
-    margin: "16px 0 12px 0" 
-  },
-  titleWrap: { display: "flex", flexDirection: "column" as const },
-  title: { fontSize: 22, fontWeight: 600, letterSpacing: "-0.01em", color: "#0f172a", margin: 0 },
-  sub: { fontSize: 13, color: "#667085", marginTop: 4 },
-  actionRow: { display: "flex", alignItems: "center", gap: 8 },
-  smallBtn: {
-    height: 32, padding: "0 10px", borderRadius: 8,
-    background: "#fff", border: "1px solid rgba(0,0,0,0.08)", cursor: "pointer",
-    fontSize: 14, color: "#374151", transition: "all 0.2s ease"
-  }
-};
 
-// Dashboard 页内标题与操作按钮行
-function PageHeader({ 
-  onRefresh, 
-  onAddAccount, 
-  onLogout 
-}: { 
-  onRefresh: () => void;
-  onAddAccount: () => void;
-  onLogout: () => void;
-}) {
-  const handleBtnHover = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.currentTarget.style.background = "#f8fafc";
-    e.currentTarget.style.borderColor = "#4f46e5";
-    e.currentTarget.style.transform = "translateY(-1px)";
-  };
-
-  const handleBtnLeave = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.currentTarget.style.background = "#fff";
-    e.currentTarget.style.borderColor = "rgba(0,0,0,0.08)";
-    e.currentTarget.style.transform = "translateY(0)";
-  };
-
-  const handleLogoutHover = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.currentTarget.style.background = "#fef2f2";
-    e.currentTarget.style.borderColor = "#dc2626";
-    e.currentTarget.style.color = "#dc2626";
-    e.currentTarget.style.transform = "translateY(-1px)";
-  };
-
-  const handleLogoutLeave = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.currentTarget.style.background = "#fff";
-    e.currentTarget.style.borderColor = "rgba(0,0,0,0.08)";
-    e.currentTarget.style.color = "#374151";
-    e.currentTarget.style.transform = "translateY(0)";
-  };
-
-  return (
-    <div style={S.pageHeader}>
-      <div style={S.titleWrap}>
-        <h1 style={S.title}>操作台</h1>
-        <span style={S.sub}>关键指标与最新动态</span>
-      </div>
-      <div style={S.actionRow}>
-        <button 
-          style={S.smallBtn} 
-          onClick={onRefresh}
-          onMouseEnter={handleBtnHover}
-          onMouseLeave={handleBtnLeave}
-        >
-          刷新
-        </button>
-        <button 
-          style={S.smallBtn} 
-          onClick={onAddAccount}
-          onMouseEnter={handleBtnHover}
-          onMouseLeave={handleBtnLeave}
-        >
-          ➕ 添加账号
-        </button>
-        <button 
-          style={S.smallBtn} 
-          onClick={onLogout}
-          onMouseEnter={handleLogoutHover}
-          onMouseLeave={handleLogoutLeave}
-        >
-          🚪 退出登录
-        </button>
-      </div>
-    </div>
-  );
-}
 
 export default function DashboardInline() {
   const [status, setStatus] = useState<any>(null);
@@ -623,12 +536,15 @@ export default function DashboardInline() {
     >
       {/* 主内容区域 */}
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px' }}>
-        {/* 页面标题与操作按钮 */}
-        <PageHeader 
-          onRefresh={handleRefresh} 
-          onAddAccount={handleAddAccount}
-          onLogout={handleLogout}
-        />
+        {/* 页面标题 */}
+        <div style={{ marginBottom: '24px' }}>
+          <h1 style={{ fontSize: '32px', fontWeight: 600, color: '#111827', margin: 0 }}>
+            操作台
+          </h1>
+          <p style={{ fontSize: '16px', color: '#6B7280', margin: '8px 0 0 0' }}>
+            关键指标与最新动态
+          </p>
+        </div>
         {/* KPI统计卡片 */}
         <div
           style={{

@@ -645,7 +645,7 @@ export default function BatchSendPage() {
                 type="checkbox"
                 id="filteredContacts"
                 style={S.checkbox}
-                checked={contactFilters.tags.length > 0 || contactFilters.source || contactFilters.createdAfter}
+                checked={Boolean(contactFilters.tags.length > 0 || contactFilters.source || contactFilters.createdAfter)}
                 onChange={(e) => {
                   if (!e.target.checked) {
                     setContactFilters({ tags: [], source: '', createdAfter: '' });

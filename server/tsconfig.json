@@ -1,0 +1,32 @@
+{
+    "compilerOptions":  {
+                            "target":  "ES2020",
+                            "module":  "CommonJS",
+                            "moduleResolution":  "Node",
+                            "strict":  true,
+                            "esModuleInterop":  true,
+                            "forceConsistentCasingInFileNames":  true,
+                            "skipLibCheck":  true,
+                            "outDir":  "app/dist",
+                            "rootDir":  "app/src",
+                            "resolveJsonModule":  true,
+                            "sourceMap":  true,
+                            "types":  [
+                                          "node"
+                                      ],
+                            "baseUrl":  ".",
+                            "paths":  {
+                                          "@/*":  [
+                                                      "./*"
+                                                  ]
+                                      }
+                        },
+    "include":  [
+                    "app/src"
+                ],
+    "exclude":  [
+                    "node_modules",
+                    "app/dist"
+                ]
+}
+

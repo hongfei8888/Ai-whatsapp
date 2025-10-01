@@ -36,8 +36,6 @@ const parseStylePreset = (value, fallback) => {
     }
     return fallback;
 };
-const cooldownHours = parsePositiveNumber(process.env.COOLDOWN_HOURS, 24);
-const perContactReplyCooldown = parsePositiveNumber(process.env.PER_CONTACT_REPLY_COOLDOWN, 10);
 const defaultBannedKeywords = ['保证', '永久', '群发', '官方'];
 const llmDefaultMaxTokens = Math.max(320, Math.round(parseNumber(process.env.LLM_MAX_TOKENS, 384)));
 const llmDefaultTemperature = Math.min(1, Math.max(0, parseNumber(process.env.LLM_TEMPERATURE, 0.4)));
@@ -46,10 +44,6 @@ const llmDefaultStylePreset = parseStylePreset(process.env.LLM_STYLE_PRESET, 'co
 exports.appConfig = {
     databaseUrl: process.env.DATABASE_URL ?? 'file:./dev.db',
     sessionPath: process.env.SESSION_PATH ?? './.session',
-    cooldownHours,
-    cooldownMs: cooldownHours * 60 * 60 * 1000,
-    perContactReplyCooldown,
-    perContactReplyCooldownMs: perContactReplyCooldown * 60 * 1000,
     authToken: process.env.AUTH_TOKEN ? process.env.AUTH_TOKEN.trim() : null, // 设置为null禁用认证
     deepseekApiKey: process.env.DEEPSEEK_API_KEY ? process.env.DEEPSEEK_API_KEY.trim() : null,
     deepseekApiUrl: process.env.DEEPSEEK_API_URL?.trim() || 'https://api.deepseek.com',

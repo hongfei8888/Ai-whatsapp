@@ -291,6 +291,22 @@ class WhatsAppService extends events_1.EventEmitter {
         };
         return this.retry(send, 'sendTextMessage');
     }
+    async sendMediaMessage(phoneE164, filePath, caption) {
+        if (this.status !== 'READY') {
+            throw new Error('WhatsApp client not ready');
+        }
+        const chatId = this.toChatId(phoneE164);
+        logger_1.logger.debug({ chatId, filePath }, 'Sending WhatsApp media message');
+        const client = this.client;
+        if (!client) {
+            throw new Error('WhatsApp client not available');
+        }
+        const send = async () => {
+            const response = await client.sendMessage(chatId, filePath, { caption: caption || '' });
+            return { id: response.id ? response.id._serialized : undefined };
+        };
+        return this.retry(send, 'sendMediaMessage');
+    }
     async retry(fn, operation) {
         let attempt = 0;
         let delay = BASE_DELAY_MS;
@@ -388,6 +404,125 @@ class WhatsAppService extends events_1.EventEmitter {
     toChatId(phoneE164) {
         const digits = phoneE164.replace(/[^\d]/g, '');
         return `${digits}@c.us`;
+    }
+    /**
+     * 获取WhatsApp中的所有联系人
+     */
+    async getWhatsAppContacts() {
+        if (!this.client || this.status !== 'READY') {
+            throw new Error('WhatsApp client is not ready');
+        }
+        try {
+            logger_1.logger.info('Fetching WhatsApp contacts...');
+            // 获取所有聊天（包括个人和群组）
+            const chats = await this.client.getChats();
+            const contacts = [];
+            for (const chat of chats) {
+                // 只处理个人聊天，跳过群组
+                if (chat.isGroup) {
+                    continue;
+                }
+                const contact = chat; // 类型断言，因为whatsapp-web.js的类型定义可能不完整
+                // 提取联系人信息
+                const contactInfo = {
+                    id: contact.id._serialized || contact.id,
+                    name: contact.name || contact.pushname || undefined,
+                    number: this.extractPhoneNumber(contact.id._serialized || contact.id),
+                    isGroup: contact.isGroup || false,
+                    isUser: contact.isUser || false,
+                    isWAContact: contact.isWAContact || false,
+                    profilePicUrl: contact.profilePicUrl || undefined,
+                };
+                // 只添加有效的个人联系人
+                if (contactInfo.number && !contactInfo.isGroup) {
+                    contacts.push(contactInfo);
+                }
+            }
+            logger_1.logger.info(`Successfully fetched ${contacts.length} WhatsApp contacts`);
+            return contacts;
+        }
+        catch (error) {
+            logger_1.logger.error({ error }, 'Failed to fetch WhatsApp contacts');
+            throw new Error(`Failed to fetch WhatsApp contacts: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+    }
+    /**
+     * 从WhatsApp ID中提取手机号
+     */
+    extractPhoneNumber(whatsappId) {
+        // WhatsApp ID格式通常是: 8613800138001@c.us
+        const match = whatsappId.match(/^(\d+)@c\.us$/);
+        if (match) {
+            const phoneNumber = match[1];
+            // 添加+号前缀
+            return phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
+        }
+        return whatsappId;
+    }
+    /**
+     * 同步WhatsApp联系人到数据库
+     */
+    async syncContactsToDatabase() {
+        try {
+            logger_1.logger.info('Starting WhatsApp contacts sync to database...');
+            const whatsappContacts = await this.getWhatsAppContacts();
+            logger_1.logger.info(`Found ${whatsappContacts.length} WhatsApp contacts to sync`);
+            const { prisma } = await Promise.resolve().then(() => __importStar(require('./prisma')));
+            logger_1.logger.info('Prisma client imported successfully');
+            let added = 0;
+            let updated = 0;
+            for (const whatsappContact of whatsappContacts) {
+                try {
+                    // 检查联系人是否已存在
+                    const existingContact = await prisma.contact.findUnique({
+                        where: { phoneE164: whatsappContact.number }
+                    });
+                    const contactData = {
+                        phoneE164: whatsappContact.number,
+                        name: whatsappContact.name || null,
+                        consent: true, // WhatsApp联系人默认同意接收消息
+                        source: 'whatsapp_sync',
+                        tags: whatsappContact.isWAContact ? ['whatsapp_contact'] : ['whatsapp_user'],
+                    };
+                    if (existingContact) {
+                        // 更新现有联系人
+                        await prisma.contact.update({
+                            where: { phoneE164: whatsappContact.number },
+                            data: {
+                                name: whatsappContact.name || existingContact.name,
+                                source: 'whatsapp_sync',
+                                tags: whatsappContact.isWAContact ? ['whatsapp_contact'] : ['whatsapp_user'],
+                            }
+                        });
+                        updated++;
+                    }
+                    else {
+                        // 创建新联系人
+                        await prisma.contact.create({
+                            data: contactData
+                        });
+                        added++;
+                    }
+                }
+                catch (contactError) {
+                    logger_1.logger.warn({
+                        contact: whatsappContact.number,
+                        error: contactError
+                    }, 'Failed to sync individual contact');
+                }
+            }
+            const result = {
+                added,
+                updated,
+                total: whatsappContacts.length
+            };
+            logger_1.logger.info({ result }, 'WhatsApp contacts sync completed');
+            return result;
+        }
+        catch (error) {
+            logger_1.logger.error({ error }, 'Failed to sync WhatsApp contacts to database');
+            throw error;
+        }
     }
 }
 exports.WhatsAppService = WhatsAppService;

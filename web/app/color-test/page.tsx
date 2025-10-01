@@ -129,7 +129,7 @@ export default function ColorTestPage() {
             <h2 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#1f2937', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               💬 最近会话
             </h2>
-            <div style={{ space: '1rem' }}>
+            <div style={{ gap: '1rem', display: 'flex', flexDirection: 'column' }}>
               <div style={{ padding: '1rem', background: '#f9fafb', borderRadius: '0.5rem', marginBottom: '0.75rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
@@ -172,7 +172,7 @@ export default function ColorTestPage() {
               <h2 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#1f2937', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 ⚡ 系统状态
               </h2>
-              <div style={{ space: '1rem' }}>
+              <div style={{ gap: '1rem', display: 'flex', flexDirection: 'column' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                   <span style={{ fontSize: '0.875rem', fontWeight: '500', color: '#374151' }}>WhatsApp 连接</span>
                   <span style={{ padding: '0.25rem 0.75rem', background: '#dcfce7', color: '#166534', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: '500' }}>
@@ -205,7 +205,7 @@ export default function ColorTestPage() {
               <h2 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#1f2937', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 📝 自动化日志
               </h2>
-              <div style={{ space: '0.75rem' }}>
+              <div style={{ gap: '0.75rem', display: 'flex', flexDirection: 'column' }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', padding: '0.75rem', background: '#f0fdf4', borderRadius: '0.5rem', marginBottom: '0.75rem' }}>
                   <div style={{ width: '0.5rem', height: '0.5rem', borderRadius: '50%', background: '#10b981', marginTop: '0.5rem' }} />
                   <div style={{ flex: 1 }}>

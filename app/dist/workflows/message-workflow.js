@@ -37,10 +37,7 @@ async function handleIncomingMessage(message) {
         externalId: message.id?._serialized ?? null,
         status: client_1.MessageStatus.SENT,
     });
-    await Promise.all([
-        (0, contact_service_1.touchCooldown)(contact.id, null),
-        (0, thread_service_1.updateThread)(thread.id, { lastHumanAt: now }),
-    ]);
+    await (0, thread_service_1.updateThread)(thread.id, { lastHumanAt: now });
     const refreshedThread = await (0, thread_service_1.getThreadById)(thread.id);
     // 确保AI总是启用（除非被人工禁用）
     if (!refreshedThread.aiEnabled) {
@@ -57,11 +54,7 @@ async function handleIncomingMessage(message) {
             return; // 发送欢迎消息后结束，下次消息会正常处理
         }
     }
-    const canSendAutoReply = await (0, thread_service_1.shouldSendAutoReply)(thread.id, now);
-    if (!canSendAutoReply) {
-        logger_1.logger.debug({ threadId: thread.id }, 'Skipping auto reply due to per-contact cooldown');
-        return;
-    }
+    // 冷却期功能已移除，允许立即发送自动回复
     const history = await (0, message_service_1.listMessages)(thread.id, 20);
     try {
         const turns = history

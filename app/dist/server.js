@@ -1,4 +1,37 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -13,13 +46,23 @@ const contact_service_1 = require("./services/contact-service");
 const outreach_service_1 = require("./services/outreach-service");
 const ai_config_service_1 = require("./services/ai-config-service");
 const thread_service_1 = require("./services/thread-service");
+const client_1 = require("@prisma/client");
 const whatsapp_service_1 = require("./whatsapp-service");
 const response_1 = require("./http/response");
 const prisma_1 = require("./prisma");
 const pipeline_1 = require("./ai/pipeline");
+const templates_1 = require("./routes/templates");
+const batch_1 = require("./routes/batch");
+const knowledge_1 = require("./routes/knowledge");
+const fs = __importStar(require("fs/promises"));
+const path = __importStar(require("path"));
+const message_service_1 = require("./services/message-service");
+const thread_service_2 = require("./services/thread-service");
+const client_2 = require("@prisma/client");
 const createContactSchema = zod_1.z.object({
     phoneE164: zod_1.z.string().min(5),
     name: zod_1.z.string().min(1).max(80).optional(),
+    consent: zod_1.z.boolean().optional(),
 }).strict();
 const contactIdSchema = zod_1.z.object({
     id: zod_1.z.string().min(1),
@@ -41,9 +84,41 @@ const aiTestSchema = zod_1.z.object({
 const messagesQuerySchema = zod_1.z.object({
     limit: zod_1.z.coerce.number().int().min(1).max(200).optional(),
 });
+const createTemplateSchema = zod_1.z.object({
+    name: zod_1.z.string().min(1).max(120),
+    content: zod_1.z.string().min(1).max(2000),
+    variables: zod_1.z.array(zod_1.z.string().min(1).max(50)).optional(),
+}).strict();
+const updateTemplateSchema = zod_1.z.object({
+    name: zod_1.z.string().min(1).max(120).optional(),
+    content: zod_1.z.string().min(1).max(2000).optional(),
+    variables: zod_1.z.array(zod_1.z.string().min(1).max(50)).optional(),
+}).refine((value) => value.name || value.content || (value.variables && value.variables.length > 0), {
+    message: 'At least one field must be provided for update',
+});
+const createCampaignSchema = zod_1.z.object({
+    name: zod_1.z.string().min(1).max(120),
+    templateId: zod_1.z.string().min(1).optional(),
+    content: zod_1.z.string().min(1).max(2000).optional(),
+    contactIds: zod_1.z.array(zod_1.z.string().min(1)).optional(),
+    scheduleAt: zod_1.z.string().datetime().optional(),
+    ratePerMinute: zod_1.z.number().int().min(1).max(60).optional(),
+    jitterMs: zod_1.z.number().int().min(0).max(2000).optional(),
+}).refine((value) => Boolean(value.templateId) || Boolean(value.content), {
+    message: 'templateId or content is required',
+});
+const campaignListQuerySchema = zod_1.z.object({
+    status: zod_1.z.nativeEnum(client_1.CampaignStatus).optional(),
+});
+const campaignRecipientsQuerySchema = zod_1.z.object({
+    status: zod_1.z.nativeEnum(client_1.CampaignRecipientStatus).optional(),
+    take: zod_1.z.coerce.number().int().min(1).max(200).optional(),
+    cursor: zod_1.z.string().optional(),
+});
+const previewQuerySchema = zod_1.z.object({
+    limit: zod_1.z.coerce.number().int().min(1).max(20).optional(),
+});
 const settingsSchema = zod_1.z.object({
-    cooldownHours: zod_1.z.number().int().min(1).max(168).optional(),
-    perContactReplyCooldownMinutes: zod_1.z.number().int().min(0).max(1440).optional(),
     globalAiEnabled: zod_1.z.boolean().optional(),
     welcomeTemplate: zod_1.z.string().min(1).max(500).optional(),
 }).strict();
@@ -78,10 +153,6 @@ const errorHandler = async (error, request, reply) => {
         await (0, response_1.sendError)(reply, 404, { code: 'THREAD_NOT_FOUND', message: error.message });
         return;
     }
-    if (error instanceof errors_1.CooldownActiveError) {
-        await (0, response_1.sendError)(reply, 429, { code: 'COOLDOWN', message: error.message });
-        return;
-    }
     if (error instanceof errors_1.ForbiddenKeywordError) {
         await (0, response_1.sendError)(reply, 422, { code: 'CONTENT', message: error.message });
         return;
@@ -102,17 +173,21 @@ const errorHandler = async (error, request, reply) => {
     await (0, response_1.sendError)(reply, 500, { code: 'INTERNAL_ERROR', message: 'Internal Server Error' });
 };
 const serializeContact = (contact) => ({
-    ...contact,
-    cooldownUntil: contact.cooldownUntil ? contact.cooldownUntil.toISOString() : null,
-    createdAt: contact.createdAt.toISOString(),
-    updatedAt: contact.updatedAt.toISOString(),
-});
-const serializeContactSummary = (contact, now = new Date()) => ({
     id: contact.id,
     phoneE164: contact.phoneE164,
     name: contact.name,
-    cooldownUntil: contact.cooldownUntil ? contact.cooldownUntil.toISOString() : null,
-    cooldownRemainingSeconds: (0, contact_service_1.computeCooldownRemainingSeconds)(contact.cooldownUntil, now),
+    consent: contact.consent,
+    optedOutAt: contact.optedOutAt ? contact.optedOutAt.toISOString() : null,
+    source: contact.source,
+    tags: contact.tags,
+    notes: contact.notes,
+    createdAt: contact.createdAt.toISOString(),
+    updatedAt: contact.updatedAt.toISOString(),
+});
+const serializeContactSummary = (contact) => ({
+    id: contact.id,
+    phoneE164: contact.phoneE164,
+    name: contact.name,
 });
 const serializeThreadListItem = (thread, now = new Date()) => ({
     id: thread.id,
@@ -124,7 +199,7 @@ const serializeThreadListItem = (thread, now = new Date()) => ({
     updatedAt: thread.updatedAt.toISOString(),
     messagesCount: thread.messagesCount,
     latestMessageAt: thread.latestMessageAt ? thread.latestMessageAt.toISOString() : null,
-    contact: serializeContactSummary(thread.contact, now),
+    contact: serializeContactSummary(thread.contact),
 });
 const serializeThreadWithMessages = (thread, now = new Date()) => ({
     id: thread.id,
@@ -134,7 +209,7 @@ const serializeThreadWithMessages = (thread, now = new Date()) => ({
     lastBotAt: thread.lastBotAt ? thread.lastBotAt.toISOString() : null,
     createdAt: thread.createdAt.toISOString(),
     updatedAt: thread.updatedAt.toISOString(),
-    contact: serializeContactSummary(thread.contact, now),
+    contact: serializeContactSummary(thread.contact),
     messages: thread.messages.map((message) => ({
         id: message.id,
         threadId: message.threadId,
@@ -154,7 +229,16 @@ async function buildServer() {
         origin: ['http://localhost:3000', 'http://localhost:3001'], // Allow frontend origins
         credentials: true,
     });
-    app.addHook('onRequest', authHook);
+    // Register multipart plugin for file uploads
+    await app.register(require('@fastify/multipart'), {
+        limits: {
+            fileSize: 10 * 1024 * 1024, // 10MB limit
+        },
+    });
+    // 只在启用认证时注册认证钩子
+    if (config_1.isAuthEnabled) {
+        app.addHook('onRequest', authHook);
+    }
     app.setErrorHandler(errorHandler);
     app.get('/status', async (_request, reply) => {
         const status = whatsapp_service_1.whatsappService.getStatus();
@@ -175,8 +259,6 @@ async function buildServer() {
             state: status.state, // 新增状态机状态
             phoneE164: status.phoneE164, // 新增手机号
             lastOnline: status.lastOnline?.toISOString() ?? null, // 新增最后在线时间
-            cooldownHours: config_1.appConfig.cooldownHours,
-            perContactReplyCooldownMinutes: config_1.appConfig.perContactReplyCooldown,
             contactCount,
             latestMessageAt: latestMessage._max.createdAt
                 ? latestMessage._max.createdAt.toISOString()
@@ -237,7 +319,7 @@ async function buildServer() {
     app.post('/contacts', async (request, reply) => {
         const body = createContactSchema.parse(request.body);
         const contact = await (0, contact_service_1.createContact)(body);
-        const view = serializeContact((0, contact_service_1.withCooldownRemaining)(contact));
+        const view = serializeContact(contact);
         return (0, response_1.sendOk)(reply, 201, view);
     });
     app.get('/contacts', async (_request, reply) => {
@@ -246,10 +328,45 @@ async function buildServer() {
             contacts: contacts.map(serializeContact),
         });
     });
+    // 获取WhatsApp联系人 (必须在 /contacts/:id 之前)
+    app.get('/contacts/whatsapp', async (_request, reply) => {
+        try {
+            const whatsappContacts = await whatsapp_service_1.whatsappService.getWhatsAppContacts();
+            return (0, response_1.sendOk)(reply, 200, {
+                contacts: whatsappContacts,
+                count: whatsappContacts.length,
+            });
+        }
+        catch (error) {
+            logger_1.logger.error({ error }, 'Failed to get WhatsApp contacts');
+            return (0, response_1.sendError)(reply, 500, { code: 'WHATSAPP_CONTACTS_FAILED', message: 'Failed to get WhatsApp contacts' });
+        }
+    });
+    // 同步WhatsApp联系人到数据库 (必须在 /contacts/:id 之前)
+    app.post('/contacts/sync-whatsapp', async (_request, reply) => {
+        try {
+            const result = await whatsapp_service_1.whatsappService.syncContactsToDatabase();
+            return (0, response_1.sendOk)(reply, 200, {
+                message: 'WhatsApp contacts synced successfully',
+                result,
+            });
+        }
+        catch (error) {
+            logger_1.logger.error({ error }, 'Failed to sync WhatsApp contacts');
+            return (0, response_1.sendError)(reply, 500, { code: 'WHATSAPP_SYNC_FAILED', message: 'Failed to sync WhatsApp contacts' });
+        }
+    });
     app.delete('/contacts/:id', async (request, reply) => {
-        const params = contactIdSchema.parse(request.params);
-        await (0, contact_service_1.deleteContact)(params.id);
-        return (0, response_1.sendOk)(reply, 200, { message: 'Contact deleted successfully' });
+        try {
+            const params = contactIdSchema.parse(request.params);
+            await (0, contact_service_1.deleteContact)(params.id);
+            return (0, response_1.sendOk)(reply, 200, { message: 'Contact deleted successfully' });
+        }
+        catch (error) {
+            const params = contactIdSchema.parse(request.params);
+            logger_1.logger.error({ error, contactId: params.id }, 'Failed to delete contact');
+            return (0, response_1.sendError)(reply, 500, { code: 'DELETE_CONTACT_FAILED', message: 'Failed to delete contact' });
+        }
     });
     app.post('/contacts/:id/outreach', async (request, reply) => {
         const params = contactIdSchema.parse(request.params);
@@ -273,6 +390,45 @@ async function buildServer() {
             },
         });
     });
+    // 文件上传API
+    app.post('/contacts/:id/upload', async (request, reply) => {
+        const params = contactIdSchema.parse(request.params);
+        try {
+            const data = await request.file();
+            if (!data) {
+                return (0, response_1.sendError)(reply, 400, { code: 'NO_FILE', message: 'No file uploaded' });
+            }
+            const contact = await (0, contact_service_1.getContactById)(params.id);
+            const thread = await (0, thread_service_2.getOrCreateThread)(contact.id);
+            // 保存文件到临时目录
+            const uploadDir = './uploads';
+            await fs.mkdir(uploadDir, { recursive: true });
+            const fileName = `${Date.now()}_${data.filename}`;
+            const filePath = path.join(uploadDir, fileName);
+            // 写入文件
+            await fs.writeFile(filePath, await data.toBuffer());
+            // 发送媒体消息
+            const sendResult = await whatsapp_service_1.whatsappService.sendMediaMessage(contact.phoneE164, filePath, data.filename);
+            // 记录消息到数据库
+            const message = await (0, message_service_1.recordMessage)({
+                threadId: thread.id,
+                direction: client_2.MessageDirection.OUT,
+                text: `[文件] ${data.filename}`,
+                externalId: sendResult.id ?? null,
+                status: client_2.MessageStatus.SENT,
+            });
+            // 清理临时文件
+            await fs.unlink(filePath).catch(() => { }); // 忽略删除错误
+            return (0, response_1.sendOk)(reply, 202, { threadId: thread.id, message });
+        }
+        catch (error) {
+            logger_1.logger.error({ error, contactId: params.id }, 'Failed to upload file');
+            return (0, response_1.sendError)(reply, 500, {
+                code: 'UPLOAD_FAILED',
+                message: 'File upload failed'
+            });
+        }
+    });
     app.get('/threads', async (_request, reply) => {
         const threads = await (0, thread_service_1.listThreads)();
         const now = new Date();
@@ -291,6 +447,14 @@ async function buildServer() {
         await (0, thread_service_1.setAiEnabled)(params.id, false);
         const thread = await (0, thread_service_1.getThreadSummary)(params.id);
         return (0, response_1.sendOk)(reply, 200, { thread: serializeThreadListItem(thread) });
+    });
+    // 设置线程AI状态
+    app.put('/threads/:id/ai', async (request, reply) => {
+        const params = contactIdSchema.parse(request.params);
+        const body = zod_1.z.object({ aiEnabled: zod_1.z.boolean() }).parse(request.body);
+        await (0, thread_service_1.setAiEnabled)(params.id, body.aiEnabled);
+        const threadSummary = await (0, thread_service_1.getThreadSummary)(params.id);
+        return (0, response_1.sendOk)(reply, 200, { thread: serializeThreadListItem(threadSummary) });
     });
     app.post('/threads/:id/release', async (request, reply) => {
         const params = contactIdSchema.parse(request.params);
@@ -386,15 +550,26 @@ async function buildServer() {
     app.get('/contacts/:id', async (request, reply) => {
         const params = contactIdSchema.parse(request.params);
         const contact = await (0, contact_service_1.getContactById)(params.id);
-        const view = serializeContact((0, contact_service_1.withCooldownRemaining)(contact));
+        const view = serializeContact(contact);
         return (0, response_1.sendOk)(reply, 200, view);
+    });
+    // 更新系统设置
+    app.put('/settings', async (request, reply) => {
+        try {
+            const body = settingsSchema.parse(request.body);
+            // TODO: 保存到数据库或配置文件
+            logger_1.logger.info({ settings: body }, 'Settings updated');
+            return (0, response_1.sendOk)(reply, 200, { message: 'Settings updated successfully', settings: body });
+        }
+        catch (error) {
+            logger_1.logger.error({ error }, 'Failed to update settings');
+            return (0, response_1.sendError)(reply, 500, { code: 'SETTINGS_UPDATE_ERROR', message: 'Failed to update settings' });
+        }
     });
     // 获取系统设置
     app.get('/settings', async (_request, reply) => {
         try {
             const settings = {
-                cooldownHours: config_1.appConfig.cooldownHours,
-                perContactReplyCooldownMinutes: config_1.appConfig.perContactReplyCooldown,
                 globalAiEnabled: true, // 可以从数据库或配置中获取
                 welcomeTemplate: config_1.appConfig.welcomeTemplate || '您好！我是AI助手，很高兴为您服务。',
                 apiUrl: process.env.API_BASE_URL || 'http://localhost:4000',
@@ -432,6 +607,14 @@ async function buildServer() {
             return (0, response_1.sendError)(reply, 500, { code: 'SETTINGS_SAVE_FAILED', message: 'Failed to save settings' });
         }
     });
+    // 注册模板管理路由
+    await app.register(templates_1.templateRoutes);
+    await app.register(templates_1.categoryRoutes);
+    // 注册批量操作路由
+    await app.register(batch_1.batchRoutes);
+    // 注册知识库路由
+    await app.register(knowledge_1.knowledgeRoutes);
+    await app.register(knowledge_1.knowledgeCategoryRoutes);
     if (!config_1.isAuthEnabled) {
         logger_1.logger.warn('AUTH_TOKEN is not configured. Authentication is disabled.');
     }

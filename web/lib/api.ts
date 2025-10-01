@@ -21,7 +21,7 @@ import type {
   SearchResult
 } from '@/lib/types';
 
-const API_BASE_URL = '/api/proxy'; // 强制使用代理路径
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000';
 const API_TOKEN = process.env.NEXT_PUBLIC_API_TOKEN || null;
 
 interface ApiSuccess<T> {
@@ -363,6 +363,10 @@ export const api = {
       if (limit) params.append('limit', limit.toString());
       return apiFetch<KnowledgeItem[]>(`/knowledge/popular?${params.toString()}`);
     },
+
+    // 使用知识库条目（记录使用次数）
+    use: (id: string) =>
+      apiFetch<{ message: string }>(`/knowledge/${id}/use`, { method: 'POST' }),
   },
 
   // FAQ分类API

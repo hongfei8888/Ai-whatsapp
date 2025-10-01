@@ -42,7 +42,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   const handleRefresh = () => {
     // 刷新所有页面数据
-    window.location.reload();
+    if (typeof window !== 'undefined') {
+      window.location.reload();
+    }
   };
 
   return (

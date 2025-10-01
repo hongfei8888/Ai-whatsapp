@@ -412,7 +412,7 @@ export default function CreateTemplatePage() {
             required
           />
           <div style={S.helpText}>
-            支持使用 {`{{变量名}}`} 格式插入动态变量，如：{{姓名}}、{{时间}}、{{日期}} 等
+            支持使用 {`{{变量名}}`} 格式插入动态变量，如：{`{{姓名}}`}、{`{{时间}}`}、{`{{日期}}`} 等
           </div>
         </div>
 

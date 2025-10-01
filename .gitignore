@@ -90,11 +90,39 @@ build/
 # Debug files
 *.md
 !README.md
+!项目开发过程总结与经验教训.md
 
 # Test files
 test-*.js
 debug-*.js
 final-*.js
+
+# Vercel
+.vercel
+
+# Build outputs
+out/
+coverage/
+
+# Temporary files
+tmp/
+temp/
+
+# Large media files
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.mov
+*.mp4
+*.psd
+*.sketch
+*.fig
+
+# Documentation drafts
+drafts/
+design/
+screenshots/
 
 # IDE's
 .idea

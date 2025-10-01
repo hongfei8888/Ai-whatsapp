@@ -32,7 +32,7 @@ const S = {
     background: "#fff", border: "1px solid rgba(0,0,0,0.06)",
     boxShadow: "0 1px 3px rgba(16,24,40,.08)",
     display: "flex", alignItems: "center", justifyContent: "center",
-    cursor: "pointer", userSelect: "none",
+    cursor: "pointer", userSelect: "none" as const,
     fontSize: 16, color: "#374151",
     transition: "all 0.2s ease"
   }
@@ -163,14 +163,15 @@ export default function AppBar({ onAddAccount, onRefresh }: AppBarProps) {
       </div>
       
       {/* 二维码登录对话框 */}
-      {console.log('AppBar: 渲染QRCodeDialog', { showQRDialog })}
       <QRCodeDialog 
-        isOpen={showQRDialog}
-        onClose={() => {
-          console.log('AppBar: 关闭二维码对话框');
+        isOpen={showQRDialog} 
+        onClose={() => setShowQRDialog(false)}
+        onSuccess={() => {
           setShowQRDialog(false);
+          if (typeof window !== 'undefined') {
+            window.location.reload();
+          }
         }}
-        onSuccess={handleQRSuccess}
       />
     </div>
   );

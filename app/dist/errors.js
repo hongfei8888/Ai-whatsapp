@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.MessageSendError = exports.ValidationError = exports.ForbiddenKeywordError = exports.AuthenticationError = exports.OutreachGuardError = exports.CooldownActiveError = exports.ThreadNotFoundError = exports.ContactAlreadyExistsError = exports.ContactNotFoundError = void 0;
+exports.MessageSendError = exports.ValidationError = exports.ForbiddenKeywordError = exports.AuthenticationError = exports.OutreachGuardError = exports.ThreadNotFoundError = exports.ContactAlreadyExistsError = exports.ContactNotFoundError = void 0;
 class ContactNotFoundError extends Error {
     constructor(message = 'Contact not found') {
         super(message);
@@ -22,13 +22,6 @@ class ThreadNotFoundError extends Error {
     }
 }
 exports.ThreadNotFoundError = ThreadNotFoundError;
-class CooldownActiveError extends Error {
-    constructor(message = 'Contact is in cooldown period') {
-        super(message);
-        this.name = 'CooldownActiveError';
-    }
-}
-exports.CooldownActiveError = CooldownActiveError;
 class OutreachGuardError extends Error {
     constructor(message = 'Outbound outreach not permitted') {
         super(message);

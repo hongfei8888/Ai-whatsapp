@@ -45,8 +45,6 @@ const links = [
   },
 ];
 
-];
-
 export function MainNav() {
   const pathname = usePathname();
 

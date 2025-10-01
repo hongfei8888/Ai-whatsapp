@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Copy } from 'lucide-react';
 
 import { api } from '@/lib/api';
 import type { Contact } from '@/lib/types';

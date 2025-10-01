@@ -130,9 +130,7 @@ const S = {
     textAlign: 'left' as const,
   },
   previewRow: {
-    '&:nth-child(even)': {
-      background: '#F9FAFB',
-    },
+    // 移除不支持的CSS伪选择器
   },
   actions: {
     display: 'flex',

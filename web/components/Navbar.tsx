@@ -52,8 +52,6 @@ const navItems = [
   },
 ];
 
-];
-
 export function Navbar() {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);

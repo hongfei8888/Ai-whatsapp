@@ -53,7 +53,6 @@ async function listThreads() {
                     id: true,
                     phoneE164: true,
                     name: true,
-                    cooldownUntil: true,
                 },
             },
             _count: {
@@ -73,7 +72,6 @@ async function getThreadSummary(threadId) {
                     id: true,
                     phoneE164: true,
                     name: true,
-                    cooldownUntil: true,
                 },
             },
             _count: {
@@ -95,7 +93,6 @@ async function getThreadWithMessages(threadId, limit = 50) {
                     id: true,
                     phoneE164: true,
                     name: true,
-                    cooldownUntil: true,
                 },
             },
             messages: {

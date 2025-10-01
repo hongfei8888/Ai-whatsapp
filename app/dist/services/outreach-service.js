@@ -2,7 +2,6 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.sendOutreach = sendOutreach;
 const client_1 = require("@prisma/client");
-const config_1 = require("../config");
 const errors_1 = require("../errors");
 const logger_1 = require("../logger");
 const keyword_guard_1 = require("../guards/keyword-guard");
@@ -12,9 +11,10 @@ const message_service_1 = require("./message-service");
 async function sendOutreach(request, sendMessage) {
     const now = new Date();
     const contact = await (0, contact_service_1.getContactById)(request.contactId);
-    if ((0, contact_service_1.isCooldownActive)(contact, now)) {
-        throw new errors_1.CooldownActiveError();
-    }
+    // 禁用冷却期检查 - 允许立即发送消息
+    // if (isCooldownActive(contact, now)) {
+    //   throw new CooldownActiveError();
+    // }
     (0, keyword_guard_1.ensureNoForbiddenKeyword)(request.content);
     const thread = await (0, thread_service_1.getOrCreateThread)(contact.id);
     // 保持AI启用状态，准备接收回复后自动响应
@@ -32,8 +32,9 @@ async function sendOutreach(request, sendMessage) {
             externalId: sendResult.externalId ?? null,
             status: client_1.MessageStatus.SENT,
         });
-        const cooldownUntil = new Date(now.getTime() + config_1.appConfig.cooldownMs);
-        await (0, contact_service_1.touchCooldown)(contact.id, cooldownUntil);
+        // 禁用冷却期设置 - 不设置冷却时间
+        // const cooldownUntil = new Date(now.getTime() + appConfig.cooldownMs);
+        // await touchCooldown(contact.id, cooldownUntil);
         return { threadId: thread.id, message };
     }
     catch (error) {

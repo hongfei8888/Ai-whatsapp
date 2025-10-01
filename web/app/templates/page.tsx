@@ -291,9 +291,11 @@ export default function TemplatesPage() {
       await api.templates.use(template.id);
       
       // 触发模板使用事件
-      window.dispatchEvent(new CustomEvent('templateSelected', { 
-        detail: template 
-      }));
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('templateSelected', { 
+          detail: template 
+        }));
+      }
       
       // 重新加载数据
       loadData();
