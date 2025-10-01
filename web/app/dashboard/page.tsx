@@ -537,13 +537,31 @@ export default function DashboardInline() {
       {/* 主内容区域 */}
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px' }}>
         {/* 页面标题 */}
-        <div style={{ marginBottom: '24px' }}>
-          <h1 style={{ fontSize: '32px', fontWeight: 600, color: '#111827', margin: 0 }}>
-            操作台
-          </h1>
-          <p style={{ fontSize: '16px', color: '#6B7280', margin: '8px 0 0 0' }}>
-            关键指标与最新动态
-          </p>
+        <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div>
+            <h1 style={{ fontSize: '32px', fontWeight: 600, color: '#111827', margin: 0 }}>
+              操作台
+            </h1>
+            <p style={{ fontSize: '16px', color: '#6B7280', margin: '8px 0 0 0' }}>
+              关键指标与最新动态
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            <Button
+              kind="primary"
+              onClick={handleAddAccount}
+              style={{ minWidth: '120px' }}
+            >
+              {loginStatus.text === '已连接' ? '重新扫码' : '添加账号'}
+            </Button>
+            <Button
+              kind="secondary"
+              onClick={handleRefresh}
+              style={{ minWidth: '80px' }}
+            >
+              刷新
+            </Button>
+          </div>
         </div>
         {/* KPI统计卡片 */}
         <div
@@ -662,17 +680,24 @@ export default function DashboardInline() {
                 </div>
                 <Tag text={loginStatus.text} tone={loginStatus.tone} />
               </div>
-              {loginStatus.showAction && (
-                <div style={{ marginBottom: '16px' }}>
+              <div style={{ marginBottom: '16px', display: 'flex', gap: '8px' }}>
+                <Button
+                  kind="primary"
+                  onClick={handleAddAccount}
+                  style={{ flex: 1, justifyContent: 'center' }}
+                >
+                  {loginStatus.text === '已连接' ? '重新扫码' : '扫码登录'}
+                </Button>
+                {loginStatus.text === '已连接' && (
                   <Button
-                    kind="primary"
-                    onClick={() => setShowQRDialog(true)}
-                    style={{ width: '100%', justifyContent: 'center' }}
+                    kind="secondary"
+                    onClick={handleLogout}
+                    style={{ flex: 1, justifyContent: 'center' }}
                   >
-                    扫码登录
+                    退出登录
                   </Button>
-                </div>
-              )}
+                )}
+              </div>
               <Item label="会话状态" value={status.sessionReady ? '就绪' : '未就绪'} />
               <Item label="冷却时间" value={`${status.cooldownHours} 小时`} />
               <Item label="联系人数量" value={status.contactCount} />
