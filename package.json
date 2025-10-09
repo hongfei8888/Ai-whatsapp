@@ -1,0 +1,106 @@
+{
+  "name": "whatsapp-ai-automation",
+  "version": "1.0.0",
+  "description": "WhatsApp AI Automation Desktop App",
+  "main": "electron/main.js",
+  "homepage": "https://wwebjs.dev/",
+  "scripts": {
+    "electron": "electron .",
+    "electron-dev": "concurrently \"npm run dev:server\" \"npm run dev:web\" \"wait-on http://localhost:3000 && electron .\"",
+    "dev:server": "cd server && npm run dev",
+    "dev:web": "cd web && npm run dev",
+    "prepare": "node prepare-build.js",
+    "build:server": "cd server && npm run build",
+    "build:web": "cd web && npm run build",
+    "build:all": "npm run build:server && npm run build:web",
+    "prebuild:electron": "node prepare-build.js",
+    "build:electron": "npm run build:all && electron-builder",
+    "postbuild:electron": "node verify-pack.js",
+    "build:win": "npm run build:electron -- --win",
+    "build:mac": "npm run build:electron -- --mac",
+    "build:linux": "npm run build:electron -- --linux",
+    "dist": "npm run build:electron",
+    "pack": "electron-builder --dir",
+    "verify": "node verify-pack.js",
+    "clean": "node -e \"const fs=require('fs'); if(fs.existsSync('dist-final'))fs.rmSync('dist-final',{recursive:true,force:true}); console.log('清理完成');\"",
+    "test": "mocha tests --recursive --timeout 5000",
+    "test-single": "mocha",
+    "shell": "node --experimental-repl-await ./shell.js",
+    "generate-docs": "npx jsdoc --configure .jsdoc.json --verbose",
+    "dev": "tsx --require dotenv/config app/src/main.ts",
+    "start": "node app/dist/main.js",
+    "build": "tsc --project tsconfig.json",
+    "prisma:generate": "prisma generate",
+    "prisma:deploy": "prisma migrate deploy",
+    "prisma:push": "prisma db push"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pedroslopez/whatsapp-web.js.git"
+  },
+  "keywords": [
+    "whatsapp",
+    "whatsapp-web",
+    "api",
+    "bot",
+    "client",
+    "node"
+  ],
+  "author": "Pedro Lopez",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/pedroslopez/whatsapp-web.js/issues"
+  },
+  "build": {
+    "extends": "./electron-builder.config.js"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.1.0",
+    "@fastify/multipart": "^9.2.1",
+    "@pedroslopez/moduleraid": "^5.0.2",
+    "@prisma/client": "^6.16.2",
+    "dotenv": "^16.6.1",
+    "fastify": "^5.6.1",
+    "fluent-ffmpeg": "2.1.3",
+    "mime": "^3.0.0",
+    "node-fetch": "^2.6.9",
+    "node-webpmux": "3.1.7",
+    "pino": "^9.12.0",
+    "puppeteer": "^18.2.1",
+    "qrcode": "^1.5.4",
+    "sonner": "^2.0.7",
+    "whatsapp-web.js": "^1.23.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^24.5.2",
+    "@types/node-fetch": "^2.5.12",
+    "@types/qrcode": "^1.5.5",
+    "chai": "^4.3.4",
+    "chai-as-promised": "^7.1.1",
+    "concurrently": "^9.2.1",
+    "electron": "^38.2.0",
+    "electron-builder": "^26.0.12",
+    "electron-is-dev": "^3.0.1",
+    "electron-packager": "^17.1.2",
+    "electron-serve": "^3.0.0",
+    "eslint": "^8.4.1",
+    "eslint-plugin-mocha": "^10.0.3",
+    "jsdoc": "^3.6.4",
+    "jsdoc-baseline": "^0.1.5",
+    "mocha": "^9.0.2",
+    "prisma": "^6.16.2",
+    "sinon": "^13.0.1",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.2",
+    "wait-on": "^9.0.1"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "optionalDependencies": {
+    "archiver": "^5.3.1",
+    "fs-extra": "^10.1.0",
+    "unzipper": "^0.10.11"
+  }
+}

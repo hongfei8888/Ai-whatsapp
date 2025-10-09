@@ -1,0 +1,15 @@
+# 手动推送命令（复制到 PowerShell）
+
+# 1. 进入项目目录
+cd "d:\projects\whatsapp-web.js-main 2025.9.29 自动回复养号"
+
+# 2. 配置 Git（处理大文件）
+git config http.postBuffer 524288000
+git config http.lowSpeedLimit 0
+git config http.lowSpeedTime 999999
+
+# 3. 推送（替换 YOUR_TOKEN 为实际 Token）
+git push https://YOUR_TOKEN@github.com/hongfei8888/Ai-whatsapp.git master --force
+
+# 完成后验证：访问 https://github.com/hongfei8888/Ai-whatsapp
+

@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  whatsapp-automation:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: whatsapp-ai-automation
+    restart: unless-stopped
+    
+    # 端口映射
+    ports:
+      - "4000:4000"  # 后端API
+      - "3000:3000"  # 前端（如果需要）
+    
+    # 环境变量
+    environment:
+      - NODE_ENV=production
+      - PORT=4000
+      - HOST=0.0.0.0
+      - LOG_LEVEL=info
+      # 如果需要认证，取消下面的注释
+      # - AUTH_TOKEN=your_secret_token_here
+    
+    # 数据卷（持久化存储）
+    volumes:
+      # WhatsApp会话数据
+      - whatsapp-session:/app/.session
+      # 数据库
+      - whatsapp-db:/app/server/prisma
+      # 上传文件
+      - whatsapp-uploads:/app/uploads
+    
+    # 内存限制
+    mem_limit: 2g
+    memswap_limit: 2g
+    
+    # CPU限制
+    cpus: 2.0
+    
+    # 安全选项（Chrome需要）
+    security_opt:
+      - seccomp:unconfined
+    
+    # 共享内存大小（Chrome需要）
+    shm_size: 2gb
+    
+    # 网络模式
+    network_mode: bridge
+    
+    # 日志配置
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# 数据卷定义
+volumes:
+  whatsapp-session:
+    name: whatsapp_session_data
+  whatsapp-db:
+    name: whatsapp_database
+  whatsapp-uploads:
+    name: whatsapp_uploads
+
+# 网络配置
+networks:
+  default:
+    name: whatsapp_network
+
