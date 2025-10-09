@@ -1,15 +1,37 @@
 {
   "version": 2,
   "buildCommand": "npm run build",
-  "outputDirectory": ".next",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
   "framework": "nextjs",
-  "functions": {
-    "app/api/**/*.ts": {
-      "runtime": "nodejs20.x"
+  "outputDirectory": ".next",
+  "regions": ["hnd1"],
+  "env": {
+    "NEXT_PUBLIC_APP_NAME": "WhatsApp AI Automation"
+  },
+  "build": {
+    "env": {
+      "NEXT_PUBLIC_API_BASE_URL": "@api-base-url",
+      "NEXT_PUBLIC_WS_URL": "@ws-url"
     }
   },
-  "env": {
-    "NEXT_PUBLIC_API_BASE_URL": "@api_base_url",
-    "NEXT_PUBLIC_APP_NAME": "@app_name"
-  }
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "1; mode=block"
+        }
+      ]
+    }
+  ]
 }

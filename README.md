@@ -19,13 +19,15 @@
 
 ---
 
-## 🚀 快速开始（Docker方式）
+## 🚀 快速开始
 
-### 1. 安装 Docker Desktop
+### 方式 1: 本地 Docker 部署（推荐开发）
+
+#### 1. 安装 Docker Desktop
 
 **Windows**: [下载Docker Desktop](https://www.docker.com/products/docker-desktop)
 
-### 2. 启动应用
+#### 2. 启动应用
 
 ```bash
 # 方式1: 使用脚本（推荐）
@@ -36,19 +38,52 @@ docker-compose build
 docker-compose up -d
 ```
 
-### 3. 访问应用
+#### 3. 访问应用
 
 ```
 前端界面: http://localhost:3000/dashboard/
 后端API:   http://localhost:4000/status
 ```
 
-### 4. 添加账号
+#### 4. 添加账号
 
 1. 访问设置页面: http://localhost:3000/settings/
 2. 点击"添加账号"
 3. 扫描二维码登录
 4. ✅ 完成！
+
+---
+
+### 方式 2: 云端部署（推荐生产）
+
+#### ☁️ **Vercel + Railway 部署**
+
+**前端（Vercel）**:
+1. Fork 本仓库到您的 GitHub
+2. 访问 https://vercel.com/new
+3. 导入仓库，Root Directory 设置为 `web`
+4. 添加环境变量（见下方）
+5. 点击 Deploy
+
+**后端（Railway）**:
+1. 访问 https://railway.app/new
+2. 选择 "Deploy from GitHub repo"
+3. 选择本仓库
+4. 添加 PostgreSQL 数据库
+5. 配置环境变量（见下方）
+6. 自动部署
+
+**详细步骤**:
+- 📘 [Vercel 部署指南](VERCEL_DEPLOYMENT.md)
+- 📘 [Railway 部署指南](RAILWAY_DEPLOYMENT.md)
+- ✅ [部署检查清单](DEPLOYMENT_CHECKLIST.md)
+
+**优势**:
+- ✅ 全球 CDN 加速
+- ✅ 自动 HTTPS
+- ✅ 零停机部署
+- ✅ 自动扩展
+- ✅ $5/月起
 
 ---
 
