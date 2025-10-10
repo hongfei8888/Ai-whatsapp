@@ -1444,24 +1444,35 @@ export default function ChatPage() {
                             </span>
                           )}
                         </div>
-                        <div style={styles.messageFooter}>
+                        <div style={{
+                          ...styles.messageFooter,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                        }}>
                           <span style={styles.messageTime}>
                             {formatTime(message.createdAt || message.timestamp)}
                           </span>
                           {message.fromMe && (
-                            <span style={{
-                              ...styles.messageStatus,
-                              color: message.readAt 
-                                ? '#53bdeb'  // 蓝色表示已读
-                                : message.deliveredAt 
-                                  ? '#8696a0'  // 灰色表示已送达
-                                  : '#8696a0',  // 灰色表示已发送
-                            }}>
-                              {message.readAt 
-                                ? '✓✓'  // 已读
-                                : message.deliveredAt 
-                                  ? '✓✓'  // 已送达
-                                  : '✓'}  // 已发送
+                            <span 
+                              style={{
+                                fontSize: '14px',
+                                lineHeight: '15px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                color: message.readAt 
+                                  ? '#53bdeb'  // 蓝色双勾表示已读
+                                  : '#8696a0',  // 灰色表示已发送/已送达
+                              }}
+                              title={
+                                message.readAt 
+                                  ? '已读' 
+                                  : message.deliveredAt 
+                                    ? '已送达' 
+                                    : '已发送'
+                              }
+                            >
+                              {message.readAt || message.deliveredAt ? '✓✓' : '✓'}
                             </span>
                           )}
                         </div>
