@@ -17,14 +17,14 @@ interface MediaUploaderProps {
   onUploadComplete?: (result: any) => void;
   onUploadError?: (error: Error) => void;
   accept?: string;
-  maxSize?: number; // MB
+  maxSize?: number; // MB，默认无限制
 }
 
 export default function MediaUploader({
   onUploadComplete,
   onUploadError,
   accept = 'image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt',
-  maxSize = 100, // 100MB
+  maxSize = Infinity, // ✅ 无限制
 }: MediaUploaderProps) {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -36,13 +36,15 @@ export default function MediaUploader({
 
     const file = files[0]; // 目前只支持单文件上传
 
-    // 验证文件大小
-    const maxSizeBytes = maxSize * 1024 * 1024;
-    if (file.size > maxSizeBytes) {
-      const error = new Error(`文件大小超过 ${maxSize}MB 限制`);
-      onUploadError?.(error);
-      alert(error.message);
-      return;
+    // 验证文件大小（仅当设置了限制时）
+    if (maxSize !== Infinity) {
+      const maxSizeBytes = maxSize * 1024 * 1024;
+      if (file.size > maxSizeBytes) {
+        const error = new Error(`文件大小超过 ${maxSize}MB 限制`);
+        onUploadError?.(error);
+        alert(error.message);
+        return;
+      }
     }
 
     try {
