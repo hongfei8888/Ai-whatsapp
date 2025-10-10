@@ -51,21 +51,13 @@ export async function handleIncomingMessage(message: WhatsAppMessage): Promise<v
 
   const refreshedThread = await getThreadById(thread.id);
 
-  // 确保AI总是启用（除非被人工禁用）
+  // ✅ 检查AI是否启用（尊重用户设置）
   if (!refreshedThread.aiEnabled) {
-    // 自动启用AI并发送欢迎消息（如果是首次对话）
-    await setAiEnabled(thread.id, true);
-    if (!refreshedThread.lastBotAt) {
-      await sendAndRecordReply({
-        contactId: contact.id,
-        threadId: thread.id,
-        phoneE164,
-        text: WELCOME_MESSAGE,
-        now,
-      });
-      return; // 发送欢迎消息后结束，下次消息会正常处理
-    }
+    logger.info({ threadId: thread.id }, '❌ AI自动回复已关闭，跳过回复');
+    return; // AI已关闭，不发送自动回复
   }
+
+  logger.info({ threadId: thread.id }, '✅ AI自动回复已启用，准备回复');
 
   // 冷却期功能已移除，允许立即发送自动回复
 
