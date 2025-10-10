@@ -9,10 +9,10 @@ export const MEDIA_CONFIG = {
   uploadDir: path.join(process.cwd(), 'uploads'),
   thumbnailDir: path.join(process.cwd(), 'uploads', 'thumbnails'),
   maxFileSize: {
-    image: 10 * 1024 * 1024,      // 10MB
-    document: 50 * 1024 * 1024,   // 50MB
-    audio: 20 * 1024 * 1024,      // 20MB
-    video: 100 * 1024 * 1024,     // 100MB
+    image: Infinity,      // ✅ 无限制
+    document: Infinity,   // ✅ 无限制
+    audio: Infinity,      // ✅ 无限制
+    video: Infinity,      // ✅ 无限制
   },
   allowedMimeTypes: {
     image: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
@@ -83,8 +83,9 @@ export async function saveFile(
   }
 
   if (!validateFileSize(buffer.length, mediaType)) {
-    const maxSizeMB = MEDIA_CONFIG.maxFileSize[mediaType as keyof typeof MEDIA_CONFIG.maxFileSize] / (1024 * 1024);
-    throw new Error(`文件大小超过限制 (最大 ${maxSizeMB}MB)`);
+    const maxSize = MEDIA_CONFIG.maxFileSize[mediaType as keyof typeof MEDIA_CONFIG.maxFileSize];
+    const maxSizeMB = maxSize === Infinity ? '无限制' : `${maxSize / (1024 * 1024)}MB`;
+    throw new Error(`文件大小超过限制 (最大 ${maxSizeMB})`);
   }
 
   const fileName = generateSafeFileName(originalName);

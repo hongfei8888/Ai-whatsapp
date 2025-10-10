@@ -321,7 +321,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   // Register multipart plugin for file uploads
   await app.register(require('@fastify/multipart'), {
     limits: {
-      fileSize: 100 * 1024 * 1024, // 100MB limit (for videos)
+      fileSize: Infinity, // ✅ 无限制文件大小
     },
   });
 
