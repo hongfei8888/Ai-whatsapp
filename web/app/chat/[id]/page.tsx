@@ -1425,24 +1425,6 @@ export default function ChatPage() {
                               </>
                             )}
                           </div>
-                          {/* 翻译按钮 */}
-                          {!isDeleted && (message.body || message.text) && (
-                            <span
-                              onClick={() => translateMessage(message.id)}
-                              style={{
-                                fontSize: '14px',
-                                cursor: translatingMessages.has(message.id) ? 'wait' : 'pointer',
-                                opacity: 0.6,
-                                transition: 'opacity 0.2s',
-                                userSelect: 'none',
-                              }}
-                              onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; }}
-                              onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.6'; }}
-                              title={translatingMessages.has(message.id) ? '翻译中...' : '翻译此消息'}
-                            >
-                              {translatingMessages.has(message.id) ? '⏳' : '🌐'}
-                            </span>
-                          )}
                         </div>
                         <div style={{
                           ...styles.messageFooter,
