@@ -306,7 +306,7 @@ const serializeThreadWithMessages = (
 export async function buildServer(): Promise<FastifyInstance> {
   const app = Fastify({
     logger: true,
-    bodyLimit: Infinity, // ✅ 无限制请求体大小（流式处理）
+    bodyLimit: 10 * 1024 * 1024 * 1024, // ✅ 10GB 限制（流式处理不受此限制）
     requestTimeout: 30 * 60 * 1000, // ✅ 30分钟超时（支持大文件上传）
   });
 

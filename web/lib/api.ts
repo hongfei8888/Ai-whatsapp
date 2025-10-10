@@ -626,22 +626,57 @@ export const api = {
 
   // 媒体文件 API
   media: {
-    upload: async (file: File) => {
-      const formData = new FormData();
-      formData.append('file', file);
-      
-      const response = await fetch(`${API_BASE_URL}/media/upload`, {
-        method: 'POST',
-        body: formData,
-        headers: API_TOKEN ? { Authorization: `Bearer ${API_TOKEN}` } : {},
+    upload: async (file: File, onProgress?: (progress: number) => void) => {
+      return new Promise((resolve, reject) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const xhr = new XMLHttpRequest();
+        
+        // ✅ 监听上传进度
+        xhr.upload.addEventListener('progress', (e) => {
+          if (e.lengthComputable && onProgress) {
+            const percentComplete = Math.round((e.loaded / e.total) * 100);
+            onProgress(percentComplete);
+          }
+        });
+        
+        // 监听完成
+        xhr.addEventListener('load', () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              const result = JSON.parse(xhr.responseText);
+              resolve(result.data);
+            } catch (error) {
+              reject(new Error('解析响应失败'));
+            }
+          } else {
+            reject(new Error(`上传失败: ${xhr.statusText}`));
+          }
+        });
+        
+        // 监听错误
+        xhr.addEventListener('error', () => {
+          reject(new Error('网络错误'));
+        });
+        
+        // 监听超时
+        xhr.addEventListener('timeout', () => {
+          reject(new Error('上传超时'));
+        });
+        
+        // 配置请求
+        xhr.open('POST', `${API_BASE_URL}/media/upload`);
+        if (API_TOKEN) {
+          xhr.setRequestHeader('Authorization', `Bearer ${API_TOKEN}`);
+        }
+        
+        // 设置超时（30分钟）
+        xhr.timeout = 30 * 60 * 1000;
+        
+        // 发送请求
+        xhr.send(formData);
       });
-      
-      if (!response.ok) {
-        throw new Error(`上传失败: ${response.statusText}`);
-      }
-      
-      const result = await response.json();
-      return result.data;
     },
     getUrl: (fileName: string) => `${API_BASE_URL}/media/files/${fileName}`,
     getThumbnailUrl: (fileName: string) => `${API_BASE_URL}/media/thumbnails/${fileName}`,

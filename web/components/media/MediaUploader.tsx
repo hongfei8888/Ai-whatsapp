@@ -29,7 +29,12 @@ export default function MediaUploader({
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [dragOver, setDragOver] = useState(false);
+  const [uploadSpeed, setUploadSpeed] = useState(0); // MB/s
+  const [fileSize, setFileSize] = useState(0); // 文件大小（MB）
+  const [fileName, setFileName] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const startTimeRef = useRef<number>(0);
+  const lastProgressRef = useRef<{ time: number; loaded: number }>({ time: 0, loaded: 0 });
 
   const handleFileSelect = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -50,31 +55,50 @@ export default function MediaUploader({
     try {
       setUploading(true);
       setProgress(0);
+      setFileName(file.name);
+      setFileSize(file.size / (1024 * 1024)); // 转换为 MB
+      startTimeRef.current = Date.now();
+      lastProgressRef.current = { time: Date.now(), loaded: 0 };
 
-      // 模拟进度（实际应该使用 XMLHttpRequest 或 fetch with progress）
-      const progressInterval = setInterval(() => {
-        setProgress((prev) => Math.min(prev + 10, 90));
-      }, 200);
+      // ✅ 使用真实的上传进度
+      const result = await api.media.upload(file, (progressPercent) => {
+        setProgress(progressPercent);
+        
+        // 计算上传速度
+        const now = Date.now();
+        const loadedBytes = (file.size * progressPercent) / 100;
+        const timeDiff = (now - lastProgressRef.current.time) / 1000; // 秒
+        const bytesDiff = loadedBytes - lastProgressRef.current.loaded;
+        
+        if (timeDiff > 0.5) { // 每0.5秒更新一次速度
+          const speedMBps = (bytesDiff / (1024 * 1024)) / timeDiff;
+          setUploadSpeed(speedMBps);
+          lastProgressRef.current = { time: now, loaded: loadedBytes };
+        }
+        
+        console.log(`📤 上传进度: ${progressPercent}% | 速度: ${uploadSpeed.toFixed(2)} MB/s`);
+      });
 
-      const result = await api.media.upload(file);
-
-      clearInterval(progressInterval);
-      setProgress(100);
-
-      console.log('上传成功:', result);
+      console.log('✅ 上传成功:', result);
       onUploadComplete?.(result);
 
       // 重置状态
       setTimeout(() => {
         setUploading(false);
         setProgress(0);
+        setUploadSpeed(0);
+        setFileSize(0);
+        setFileName('');
       }, 500);
     } catch (error: any) {
-      console.error('上传失败:', error);
+      console.error('❌ 上传失败:', error);
       onUploadError?.(error);
       alert('上传失败: ' + error.message);
       setUploading(false);
       setProgress(0);
+      setUploadSpeed(0);
+      setFileSize(0);
+      setFileName('');
     }
   };
 
@@ -131,7 +155,7 @@ export default function MediaUploader({
             点击选择文件或拖拽到这里
           </div>
           <div style={{ color: WhatsAppColors.textSecondary, fontSize: '12px' }}>
-            支持图片、视频、音频和文档（最大 {maxSize}MB）
+            支持图片、视频、音频和文档{maxSize === Infinity ? '（无大小限制）' : `（最大 ${maxSize}MB）`}
           </div>
         </div>
       ) : (
@@ -140,20 +164,41 @@ export default function MediaUploader({
             padding: '20px',
             border: `1px solid ${WhatsAppColors.border}`,
             borderRadius: '8px',
-            textAlign: 'center',
             backgroundColor: WhatsAppColors.panelBackground,
           }}
         >
-          <div style={{ fontSize: '14px', color: WhatsAppColors.textPrimary, marginBottom: '10px' }}>
-            上传中... {progress}%
+          {/* 文件名 */}
+          <div style={{ 
+            fontSize: '13px', 
+            color: WhatsAppColors.textPrimary, 
+            marginBottom: '8px',
+            fontWeight: 500,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}>
+            📎 {fileName}
           </div>
+          
+          {/* 进度百分比 */}
+          <div style={{ 
+            fontSize: '24px', 
+            color: WhatsAppColors.accent, 
+            marginBottom: '10px',
+            fontWeight: 'bold',
+          }}>
+            {progress}%
+          </div>
+          
+          {/* 进度条 */}
           <div
             style={{
               width: '100%',
-              height: '4px',
+              height: '6px',
               backgroundColor: WhatsAppColors.border,
-              borderRadius: '2px',
+              borderRadius: '3px',
               overflow: 'hidden',
+              marginBottom: '12px',
             }}
           >
             <div
@@ -161,9 +206,30 @@ export default function MediaUploader({
                 width: `${progress}%`,
                 height: '100%',
                 backgroundColor: WhatsAppColors.accent,
-                transition: 'width 0.3s',
+                transition: 'width 0.2s ease-out',
+                boxShadow: progress > 0 ? '0 0 10px rgba(0, 168, 132, 0.5)' : 'none',
               }}
             />
+          </div>
+          
+          {/* 详细信息 */}
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between',
+            fontSize: '12px',
+            color: WhatsAppColors.textSecondary,
+          }}>
+            <div>
+              📦 {fileSize.toFixed(2)} MB
+            </div>
+            <div>
+              ⚡ {uploadSpeed.toFixed(2)} MB/s
+            </div>
+            <div>
+              ⏱️ {progress > 0 && uploadSpeed > 0 
+                ? `${Math.ceil((fileSize * (100 - progress) / 100) / uploadSpeed)}秒` 
+                : '计算中...'}
+            </div>
           </div>
         </div>
       )}
