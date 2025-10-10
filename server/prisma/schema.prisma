@@ -105,13 +105,14 @@ model Message {
   thread      Thread           @relation(fields: [threadId], references: [id])
 
   // 媒体文件支持
-  mediaUrl      String?        // 媒体文件URL
-  mediaType     String?        // 类型: image, document, audio, video
-  mediaMimeType String?        // MIME类型
-  mediaSize     Int?           // 文件大小(字节)
-  mediaFileName String?        // 原始文件名
-  thumbnailUrl  String?        // 缩略图URL(用于图片/视频)
-  duration      Int?           // 音视频时长(秒)
+  mediaUrl         String?        // 媒体文件URL
+  mediaType        String?        // 类型: image, document, audio, video
+  mediaMimeType    String?        // MIME类型
+  mediaSize        Int?           // 文件大小(字节)
+  mediaFileName    String?        // 服务器上的文件名(唯一)
+  originalFileName String?        // 客户端原始文件名(用于显示)
+  thumbnailUrl     String?        // 缩略图URL(用于图片/视频)
+  duration         Int?           // 音视频时长(秒)
 
   // 消息引用
   replyToId     String?        // 引用的消息ID

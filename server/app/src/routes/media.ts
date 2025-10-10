@@ -7,7 +7,7 @@ export default async function mediaRoutes(fastify: FastifyInstance) {
   // 上传媒体文件
   fastify.post('/media/upload', async (request, reply) => {
     try {
-      const data = await request.file();
+      const data = await (request as any).file();
       
       if (!data) {
         return reply.code(400).send({

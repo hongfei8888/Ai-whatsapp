@@ -434,7 +434,10 @@ export default function ChatPage() {
 
   useEffect(() => {
     console.log('📊 [useEffect] 消息列表已更新，当前数量:', messages.length);
-    scrollToBottom();
+    // 始终立即滚动到底部（无动画）
+    if (messages.length > 0) {
+      scrollToBottom(true);
+    }
   }, [messages]);
   
   // 新增：草稿自动保存
@@ -463,8 +466,14 @@ export default function ChatPage() {
     };
   }, [inputText, threadId]);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  const scrollToBottom = (instant = false) => {
+    if (instant) {
+      // 立即滚动到底部（初次加载时）
+      messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+    } else {
+      // 平滑滚动（新消息到来时）
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   const loadThreads = useCallback(async () => {
@@ -545,6 +554,10 @@ export default function ChatPage() {
       }
       
       console.log('🔄 [loadThread] ✅ 状态已更新，消息已设置到 state');
+      
+      // ✅ 加载完成后立即滚动到底部
+      setTimeout(() => scrollToBottom(true), 100);
+      
     } catch (error) {
       console.error('❌ [loadThread] 加载会话消息失败:', error);
       setMessages([]);

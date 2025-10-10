@@ -126,7 +126,7 @@ export async function getThreadSummary(threadId: string): Promise<ThreadListItem
   return mapToListItem(thread as ThreadRecord);
 }
 
-export async function getThreadWithMessages(threadId: string, limit = 50): Promise<ThreadWithMessages> {
+export async function getThreadWithMessages(threadId: string, limit = 10000): Promise<ThreadWithMessages> {
   const thread = await prisma.thread.findUnique({
     where: { id: threadId },
     include: {
@@ -138,7 +138,7 @@ export async function getThreadWithMessages(threadId: string, limit = 50): Promi
         },
       },
       messages: {
-        orderBy: { createdAt: 'asc' },
+        orderBy: { createdAt: 'desc' },  // ✅ 降序：获取最新的10000条消息
         take: limit,
       },
     },
@@ -148,7 +148,13 @@ export async function getThreadWithMessages(threadId: string, limit = 50): Promi
     throw new ThreadNotFoundError();
   }
 
-  return thread as ThreadWithMessages;
+  // ✅ 反转消息数组，让最新消息在底部显示（旧消息在上，新消息在下）
+  const result = thread as ThreadWithMessages;
+  if (result.messages) {
+    result.messages.reverse();
+  }
+
+  return result;
 }
 
 // 分页获取会话消息（支持向上加载）

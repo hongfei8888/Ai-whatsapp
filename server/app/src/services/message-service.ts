@@ -7,6 +7,15 @@ export interface RecordMessageInput {
   direction: MessageDirection;
   text?: string | null;
   status?: MessageStatus;
+  // 媒体文件相关字段
+  mediaUrl?: string | null;
+  mediaType?: string | null;
+  mediaMimeType?: string | null;
+  mediaSize?: number | null;
+  mediaFileName?: string | null;
+  originalFileName?: string | null;
+  thumbnailUrl?: string | null;
+  duration?: number | null;
 }
 
 export async function recordMessage(input: RecordMessageInput): Promise<Message> {
@@ -16,6 +25,15 @@ export async function recordMessage(input: RecordMessageInput): Promise<Message>
     text: input.text ?? null,
     externalId: input.externalId ?? null,
     thread: { connect: { id: input.threadId } },
+    // 媒体文件字段
+    mediaUrl: input.mediaUrl ?? null,
+    mediaType: input.mediaType ?? null,
+    mediaMimeType: input.mediaMimeType ?? null,
+    mediaSize: input.mediaSize ?? null,
+    mediaFileName: input.mediaFileName ?? null,
+    originalFileName: input.originalFileName ?? null,
+    thumbnailUrl: input.thumbnailUrl ?? null,
+    duration: input.duration ?? null,
   };
 
   return prisma.message.create({ data });
@@ -207,7 +225,8 @@ export async function searchMessages(input: SearchMessagesInput): Promise<{
   const where: Prisma.MessageWhereInput = {
     text: {
       contains: query,
-      mode: 'insensitive' as Prisma.QueryMode,
+      // 注意：SQLite 不支持 mode: 'insensitive'，仅 PostgreSQL 支持
+      // 对于 SQLite，contains 默认是大小写敏感的
     },
     isDeleted: false,
     ...(threadId ? { threadId } : {}),

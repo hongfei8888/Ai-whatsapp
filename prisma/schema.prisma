@@ -78,7 +78,45 @@ model Message {
   createdAt      DateTime         @default(now())
   thread         Thread           @relation(fields: [threadId], references: [id])
 
+  // 媒体文件支持
+  mediaUrl         String?        // 媒体文件URL
+  mediaType        String?        // 类型: image, document, audio, video
+  mediaMimeType    String?        // MIME类型
+  mediaSize        Int?           // 文件大小(字节)
+  mediaFileName    String?        // 服务器上的文件名(唯一)
+  originalFileName String?        // 客户端原始文件名(用于显示)
+  thumbnailUrl     String?        // 缩略图URL(用于图片/视频)
+  duration         Int?           // 音视频时长(秒)
+
+  // 消息引用
+  replyToId     String?        // 引用的消息ID
+  replyTo       Message?       @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies       Message[]      @relation("MessageReplies")
+
+  // 消息编辑
+  isEdited      Boolean        @default(false)
+  editedAt      DateTime?
+  originalText  String?        // 编辑前的原文
+
+  // 消息删除
+  isDeleted     Boolean        @default(false)
+  deletedAt     DateTime?
+  deletedBy     String?        // 删除者(对方/自己)
+
+  // 消息转发
+  isForwarded   Boolean        @default(false)
+  forwardedFrom String?        // 原始发送者信息
+
+  // 消息标记
+  isStarred     Boolean        @default(false)
+  starredAt     DateTime?
+
+  // 消息状态扩展
+  deliveredAt   DateTime?      // 送达时间
+  readAt        DateTime?      // 已读时间
+
   @@index([threadId, createdAt])
+  @@index([replyToId])
 }
 
 model AiConfig {
