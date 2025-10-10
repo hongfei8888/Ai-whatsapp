@@ -380,6 +380,9 @@ export default function ChatPage() {
   const [autoTranslateEnabled, setAutoTranslateEnabled] = useState(false);
   const [translatingMessages, setTranslatingMessages] = useState<Set<string>>(new Set());
   
+  // ✅ AI自动回复开关
+  const [aiEnabled, setAiEnabled] = useState(false);
+  
   // 新增：消息操作相关状态
   const [replyToMessage, setReplyToMessage] = useState<any | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
@@ -567,6 +570,7 @@ export default function ChatPage() {
       
       setCurrentThread(data);
       setAutoTranslateEnabled((data as any).autoTranslate || false);
+      setAiEnabled((data as any).aiEnabled || false); // ✅ 读取AI开关状态
       
       // 直接设置新消息（不合并，因为已经清空）
       setMessages(data.messages || []);
@@ -1095,6 +1099,24 @@ export default function ChatPage() {
     }
   };
 
+  // ✅ 切换AI自动回复
+  const toggleAi = async () => {
+    if (!currentThread) return;
+
+    try {
+      const newState = !aiEnabled;
+      console.log('🤖 切换AI自动回复:', newState);
+      
+      await api.setThreadAiEnabled(threadId, newState);
+      setAiEnabled(newState);
+      
+      console.log('✅ AI自动回复已', newState ? '开启' : '关闭');
+    } catch (error) {
+      console.error('❌ 切换AI自动回复失败:', error);
+      alert('操作失败：' + (error instanceof Error ? error.message : '未知错误'));
+    }
+  };
+
   // 翻译并发送
   const handleTranslateAndSend = async () => {
     if (!inputText.trim()) return;
@@ -1262,6 +1284,27 @@ export default function ChatPage() {
           </div>
         </div>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          {/* ✅ AI自动回复开关 */}
+          <button
+            onClick={toggleAi}
+            style={{
+              padding: '6px 12px',
+              backgroundColor: aiEnabled ? WhatsAppColors.accent : 'transparent',
+              color: aiEnabled ? '#fff' : WhatsAppColors.textPrimary,
+              border: `1px solid ${aiEnabled ? WhatsAppColors.accent : WhatsAppColors.border}`,
+              borderRadius: '16px',
+              fontSize: '13px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              transition: 'all 0.2s',
+            }}
+            title={aiEnabled ? '关闭AI自动回复' : '开启AI自动回复'}
+          >
+            🤖 {aiEnabled ? 'AI开' : 'AI关'}
+          </button>
+          {/* 自动翻译开关 */}
           <button
             onClick={toggleAutoTranslate}
             style={{
