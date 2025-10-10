@@ -407,7 +407,13 @@ export default function ChatPage() {
   // 新增：草稿自动保存定时器
   const draftSaveTimerRef = useRef<NodeJS.Timeout | undefined>(undefined);
   
+  // ✅ 新增：滚动位置和新消息提示
+  const [isAtBottom, setIsAtBottom] = useState(true);
+  const [newMessageCount, setNewMessageCount] = useState(0);
+  const [lastReadMessageId, setLastReadMessageId] = useState<string | null>(null);
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesAreaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadThreads();
@@ -432,13 +438,36 @@ export default function ChatPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [threadId]);
 
+  // ✅ 监听滚动位置
+  useEffect(() => {
+    const messagesArea = messagesAreaRef.current;
+    if (!messagesArea) return;
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = messagesArea;
+      const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+      setIsAtBottom(isNearBottom);
+      
+      // 如果滚动到底部，清除未读计数
+      if (isNearBottom) {
+        setNewMessageCount(0);
+      }
+    };
+
+    messagesArea.addEventListener('scroll', handleScroll);
+    return () => messagesArea.removeEventListener('scroll', handleScroll);
+  }, []);
+
   useEffect(() => {
     console.log('📊 [useEffect] 消息列表已更新，当前数量:', messages.length);
     // 始终立即滚动到底部（无动画）
-    if (messages.length > 0) {
+    if (messages.length > 0 && isAtBottom) {
       scrollToBottom(true);
+    } else if (messages.length > 0 && !isAtBottom) {
+      // 如果不在底部，增加未读计数
+      setNewMessageCount(prev => prev + 1);
     }
-  }, [messages]);
+  }, [messages, isAtBottom]);
   
   // 新增：草稿自动保存
   useEffect(() => {
@@ -1278,7 +1307,10 @@ export default function ChatPage() {
       )}
 
       {/* 消息区域 */}
-      <div style={styles.messagesArea}>
+      <div 
+        ref={messagesAreaRef}
+        style={styles.messagesArea}
+      >
         {loading ? (
           <div style={{ textAlign: 'center', color: WhatsAppColors.textSecondary, padding: '40px' }}>
             加载中...
@@ -1417,7 +1449,20 @@ export default function ChatPage() {
                             {formatTime(message.createdAt || message.timestamp)}
                           </span>
                           {message.fromMe && (
-                            <span style={styles.messageStatus}>✓✓</span>
+                            <span style={{
+                              ...styles.messageStatus,
+                              color: message.readAt 
+                                ? '#53bdeb'  // 蓝色表示已读
+                                : message.deliveredAt 
+                                  ? '#8696a0'  // 灰色表示已送达
+                                  : '#8696a0',  // 灰色表示已发送
+                            }}>
+                              {message.readAt 
+                                ? '✓✓'  // 已读
+                                : message.deliveredAt 
+                                  ? '✓✓'  // 已送达
+                                  : '✓'}  // 已发送
+                            </span>
                           )}
                         </div>
                       </div>
@@ -1428,6 +1473,110 @@ export default function ChatPage() {
             ))}
             <div ref={messagesEndRef} />
           </>
+        )}
+        
+        {/* ✅ 滚动到底部按钮 */}
+        {!isAtBottom && (
+          <button
+            onClick={() => {
+              scrollToBottom(false);
+              setNewMessageCount(0);
+            }}
+            style={{
+              position: 'absolute',
+              bottom: '16px',
+              right: '24px',
+              width: '48px',
+              height: '48px',
+              borderRadius: '50%',
+              backgroundColor: WhatsAppColors.accent,
+              color: 'white',
+              border: 'none',
+              boxShadow: '0 2px 10px rgba(0,0,0,0.3)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '20px',
+              zIndex: 100,
+              transition: 'all 0.2s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'scale(1.1)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'scale(1)';
+            }}
+            title={newMessageCount > 0 ? `${newMessageCount} 条新消息` : '滚动到底部'}
+          >
+            {newMessageCount > 0 ? (
+              <div style={{ position: 'relative' }}>
+                ↓
+                <div style={{
+                  position: 'absolute',
+                  top: '-8px',
+                  right: '-8px',
+                  backgroundColor: '#ff4444',
+                  color: 'white',
+                  borderRadius: '50%',
+                  minWidth: '20px',
+                  height: '20px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '11px',
+                  fontWeight: 'bold',
+                  padding: '0 4px',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                }}>
+                  {newMessageCount > 99 ? '99+' : newMessageCount}
+                </div>
+              </div>
+            ) : (
+              '↓'
+            )}
+          </button>
+        )}
+        
+        {/* ✅ 新消息提示 Toast */}
+        {newMessageCount > 0 && !isAtBottom && (
+          <div
+            onClick={() => {
+              scrollToBottom(false);
+              setNewMessageCount(0);
+            }}
+            style={{
+              position: 'absolute',
+              bottom: '80px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              backgroundColor: WhatsAppColors.accent,
+              color: 'white',
+              padding: '8px 20px',
+              borderRadius: '20px',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: '500',
+              zIndex: 99,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              whiteSpace: 'nowrap',
+              transition: 'all 0.2s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#008f6f';
+              e.currentTarget.style.transform = 'translateX(-50%) translateY(-2px)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = WhatsAppColors.accent;
+              e.currentTarget.style.transform = 'translateX(-50%) translateY(0)';
+            }}
+          >
+            <span style={{ fontSize: '16px' }}>📩</span>
+            <span>{newMessageCount} 条新消息</span>
+          </div>
         )}
       </div>
 
