@@ -306,6 +306,8 @@ const serializeThreadWithMessages = (
 export async function buildServer(): Promise<FastifyInstance> {
   const app = Fastify({
     logger: true,
+    bodyLimit: Infinity, // ✅ 无限制请求体大小（流式处理）
+    requestTimeout: 30 * 60 * 1000, // ✅ 30分钟超时（支持大文件上传）
   });
 
   // 挂载全局 WhatsApp 服务实例到 Fastify（确保与 websocket-service 监听的是同一个实例）
@@ -318,10 +320,11 @@ export async function buildServer(): Promise<FastifyInstance> {
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'], // 允许所有常用 HTTP 方法
   });
 
-  // Register multipart plugin for file uploads
+  // Register multipart plugin for file uploads (streaming support)
   await app.register(require('@fastify/multipart'), {
     limits: {
-      fileSize: Infinity, // ✅ 无限制文件大小
+      fileSize: Infinity, // ✅ 无限制文件大小（使用流式处理）
+      files: 1, // 每次只上传一个文件
     },
   });
 

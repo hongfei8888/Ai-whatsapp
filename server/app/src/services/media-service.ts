@@ -142,7 +142,7 @@ export async function deleteThumbnail(thumbnailFileName: string): Promise<void> 
   }
 }
 
-// 处理文件上传
+// 处理文件上传（流式处理，支持超大文件）
 export async function handleFileUpload(data: any): Promise<{
   mediaUrl: string;
   mediaType: string;
@@ -151,6 +151,7 @@ export async function handleFileUpload(data: any): Promise<{
   mediaFileName: string; // 服务器上的文件名
   originalFileName: string; // 原始文件名
   thumbnailUrl?: string;
+  duration?: number;
 }> {
   const file = data;
   
@@ -158,27 +159,60 @@ export async function handleFileUpload(data: any): Promise<{
     throw new Error('没有上传文件');
   }
 
-  const buffer = await file.toBuffer();
   const mimeType = file.mimetype;
   const originalName = file.filename;
+  
+  const mediaType = getMediaType(mimeType);
+  if (!mediaType) {
+    throw new Error(`不支持的文件类型: ${mimeType}`);
+  }
 
-  const { fileName, size, mediaType } = await saveFile(buffer, originalName, mimeType);
+  await ensureUploadDirs();
+  
+  const fileName = generateSafeFileName(originalName);
+  const filePath = path.join(MEDIA_CONFIG.uploadDir, fileName);
+
+  // ✅ 使用流式写入（支持超大文件，避免内存溢出）
+  console.log(`📤 开始流式上传文件: ${originalName} -> ${fileName}`);
+  
+  const writeStream = require('fs').createWriteStream(filePath);
+  
+  await new Promise<void>((resolve, reject) => {
+    file.file  // MultipartFile 的 stream
+      .pipe(writeStream)
+      .on('finish', () => {
+        console.log(`✅ 文件写入完成: ${fileName}`);
+        resolve();
+      })
+      .on('error', (err: Error) => {
+        console.error(`❌ 文件写入失败: ${fileName}`, err);
+        reject(err);
+      });
+  });
+
+  // 获取文件大小
+  const stats = await fs.stat(filePath);
+  const size = stats.size;
+  
+  console.log(`📊 文件大小: ${(size / (1024 * 1024)).toFixed(2)} MB`);
 
   let thumbnailUrl: string | undefined;
+  let duration: number | undefined;
 
-  // 为图片生成缩略图
-  if (mediaType === 'image') {
+  // ✅ 为小于 500MB 的图片生成缩略图（避免处理超大图片）
+  if (mediaType === 'image' && size < 500 * 1024 * 1024) {
     try {
+      console.log(`🖼️ 开始生成缩略图: ${fileName}`);
       const thumbnailFileName = `thumb-${fileName}`;
-      const thumbnailPath = await generateThumbnail(
-        path.join(MEDIA_CONFIG.uploadDir, fileName),
-        thumbnailFileName
-      );
+      await generateThumbnail(filePath, thumbnailFileName);
       thumbnailUrl = `/media/thumbnails/${thumbnailFileName}`;
+      console.log(`✅ 缩略图生成成功: ${thumbnailFileName}`);
     } catch (error) {
-      console.error('生成缩略图失败:', error);
+      console.error('⚠️ 生成缩略图失败:', error);
       // 缩略图生成失败不影响主流程
     }
+  } else if (mediaType === 'image') {
+    console.log(`⏭️ 跳过缩略图生成（文件过大）: ${(size / (1024 * 1024)).toFixed(2)} MB`);
   }
 
   return {
@@ -189,6 +223,7 @@ export async function handleFileUpload(data: any): Promise<{
     mediaFileName: fileName, // 服务器上的文件名（用于后续发送）
     originalFileName: originalName, // 原始文件名（用于显示）
     thumbnailUrl,
+    duration,
   };
 }
 
