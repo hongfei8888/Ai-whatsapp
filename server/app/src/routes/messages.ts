@@ -298,6 +298,25 @@ export async function messageRoutes(fastify: FastifyInstance) {
         });
       }
 
+      // ✅ WhatsApp 文件大小限制检查
+      const fileSizeMB = fileInfo.size! / (1024 * 1024);
+      const whatsappLimits: Record<string, { maxSize: number; name: string }> = {
+        image: { maxSize: 16, name: '图片' },
+        video: { maxSize: 16, name: '视频' },
+        audio: { maxSize: 16, name: '音频' },
+        document: { maxSize: 100, name: '文档' },
+      };
+      
+      const limit = whatsappLimits[mediaType || 'document'];
+      if (limit && fileSizeMB > limit.maxSize) {
+        console.warn(`⚠️ 文件过大: ${fileSizeMB.toFixed(2)} MB > WhatsApp ${limit.name}限制 ${limit.maxSize} MB`);
+        return reply.code(400).send({
+          ok: false,
+          code: 'FILE_TOO_LARGE_FOR_WHATSAPP',
+          message: `${limit.name}文件过大（${fileSizeMB.toFixed(2)} MB），WhatsApp 限制为 ${limit.maxSize} MB。请压缩后再发送。`,
+        });
+      }
+
       // 查找或创建联系人
       let contact = await contactService.getContactByPhone(phoneE164);
       if (!contact) {
@@ -307,8 +326,12 @@ export async function messageRoutes(fastify: FastifyInstance) {
       // 获取或创建对话线程
       const thread = await threadService.getOrCreateThread(contact.id);
 
+      console.log(`📤 [发送媒体] 开始读取文件: ${fileSizeMB.toFixed(2)} MB`);
+
       // 发送媒体消息（使用 MessageMedia）
       const media = MessageMedia.fromFilePath(filePath);
+      
+      console.log(`✅ [发送媒体] 文件读取完成，准备发送`);
       
       // ✅ 设置原始文件名，这样客户收到的文件就是原始文件名
       if (originalFileName) {

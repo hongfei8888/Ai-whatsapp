@@ -41,8 +41,37 @@ export default function MediaUploader({
 
     const file = files[0]; // 目前只支持单文件上传
 
-    // 验证文件大小（仅当设置了限制时）
-    if (maxSize !== Infinity) {
+    // ✅ WhatsApp 文件大小限制检查
+    const fileSizeMB = file.size / (1024 * 1024);
+    const fileType = file.type;
+    
+    let whatsappLimit = 100; // 默认文档限制
+    let limitName = '文档';
+    
+    if (fileType.startsWith('image/')) {
+      whatsappLimit = 16;
+      limitName = '图片';
+    } else if (fileType.startsWith('video/')) {
+      whatsappLimit = 16;
+      limitName = '视频';
+    } else if (fileType.startsWith('audio/')) {
+      whatsappLimit = 16;
+      limitName = '音频';
+    }
+    
+    if (fileSizeMB > whatsappLimit) {
+      const error = new Error(
+        `${limitName}文件过大（${fileSizeMB.toFixed(2)} MB）\n` +
+        `WhatsApp 限制为 ${whatsappLimit} MB\n` +
+        `请压缩后再上传`
+      );
+      onUploadError?.(error);
+      alert(error.message);
+      return;
+    }
+
+    // 验证文件大小（仅当设置了自定义限制时）
+    if (maxSize !== Infinity && maxSize < whatsappLimit) {
       const maxSizeBytes = maxSize * 1024 * 1024;
       if (file.size > maxSizeBytes) {
         const error = new Error(`文件大小超过 ${maxSize}MB 限制`);
@@ -154,8 +183,12 @@ export default function MediaUploader({
           <div style={{ color: WhatsAppColors.textPrimary, fontSize: '14px', marginBottom: '5px' }}>
             点击选择文件或拖拽到这里
           </div>
-          <div style={{ color: WhatsAppColors.textSecondary, fontSize: '12px' }}>
-            支持图片、视频、音频和文档{maxSize === Infinity ? '（无大小限制）' : `（最大 ${maxSize}MB）`}
+          <div style={{ color: WhatsAppColors.textSecondary, fontSize: '12px', lineHeight: '1.4' }}>
+            支持图片、视频、音频和文档
+            <br />
+            <span style={{ fontSize: '11px', color: '#8696a0' }}>
+              ⚠️ WhatsApp 限制: 图片/视频/音频≤16MB, 文档≤100MB
+            </span>
           </div>
         </div>
       ) : (
