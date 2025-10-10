@@ -1,818 +1,899 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
+import WhatsAppLayout, { WhatsAppColors } from '@/components/layout/WhatsAppLayout';
+import Sidebar from '@/components/layout/Sidebar';
+import StatCard from '@/components/StatCard';
+import LineChart from '@/components/charts/LineChart';
+import PieChart from '@/components/charts/PieChart';
+import BarChart from '@/components/charts/BarChart';
 import { api } from '@/lib/api';
 import QRCodeDialog from '@/components/QRCodeDialog';
-import { useWebSocket } from '@/hooks/useWebSocket';
+import { useWebSocket } from '@/lib/useWebSocket';
 
-// 类型定义
-interface ButtonProps {
-  kind?: 'primary' | 'secondary' | 'ghost';
-  children: React.ReactNode;
-  onClick?: () => void;
-  style?: React.CSSProperties;
-  [key: string]: any;
-}
-
-interface CardProps {
-  children: React.ReactNode;
-  style?: React.CSSProperties;
-  hoverable?: boolean;
-  [key: string]: any;
-}
-
-interface TagProps {
-  text: string;
-  tone?: 'success' | 'warn' | 'error' | 'info';
-  style?: React.CSSProperties;
-}
-
-interface StatProps {
-  label: string;
-  value: string | number;
-  hint: string;
-  color?: string;
-}
-
-interface RowProps {
-  contact: string;
-  messages: number;
-  lastActive: string;
-  status: React.ReactNode;
-  onClick?: () => void;
-}
-
-interface ItemProps {
-  label: string;
-  value: string | number;
-  style?: React.CSSProperties;
-}
-
-// 内联样式小组件
-const Button = ({ kind = 'secondary', children, onClick, style = {}, ...props }: ButtonProps) => {
-  const baseStyle = {
-    padding: '8px 16px',
-    borderRadius: '8px',
-    border: 'none',
-    cursor: 'pointer',
+const styles = {
+  // 左侧面板样式
+  listHeader: {
+    backgroundColor: WhatsAppColors.panelBackground,
+    padding: '16px',
+    borderBottom: `1px solid ${WhatsAppColors.border}`,
+  },
+  headerTitle: {
+    color: WhatsAppColors.textPrimary,
+    fontSize: '20px',
+    fontWeight: '600' as const,
+    marginBottom: '8px',
+  },
+  headerSubtitle: {
+    color: WhatsAppColors.textSecondary,
     fontSize: '14px',
-    fontWeight: '500',
-    fontFamily: 'PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, sans-serif',
-    transition: 'all 0.2s ease',
-    display: 'inline-flex',
+  },
+  statsGrid: {
+    padding: '16px',
+    display: 'grid',
+    gridTemplateColumns: '1fr',
+    gap: '12px',
+  },
+  statCard: {
+    backgroundColor: WhatsAppColors.panelBackground,
+    borderRadius: '12px',
+    padding: '16px',
+    border: `1px solid ${WhatsAppColors.border}`,
+  },
+  statValue: {
+    fontSize: '32px',
+    fontWeight: '700' as const,
+    color: WhatsAppColors.textPrimary,
+    marginBottom: '4px',
+  },
+  statLabel: {
+    fontSize: '13px',
+    color: WhatsAppColors.textSecondary,
+    marginBottom: '2px',
+  },
+  statHint: {
+    fontSize: '11px',
+    color: WhatsAppColors.textSecondary,
+    opacity: 0.7,
+  },
+  statusSection: {
+    padding: '16px',
+    borderTop: `1px solid ${WhatsAppColors.border}`,
+  },
+  sectionTitle: {
+    fontSize: '13px',
+    color: WhatsAppColors.textSecondary,
+    marginBottom: '12px',
+    fontWeight: '600' as const,
+    textTransform: 'uppercase' as const,
+  },
+  statusCard: {
+    backgroundColor: WhatsAppColors.panelBackground,
+    borderRadius: '12px',
+    padding: '16px',
+    border: `1px solid ${WhatsAppColors.border}`,
+  },
+  statusRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: '6px',
-    ...style
-  };
-
-  const kindStyles = {
-    primary: {
-      backgroundColor: '#4F46E5',
-      color: '#FFFFFF',
-      boxShadow: '0 1px 2px rgba(0,0,0,.06)',
-    },
-    secondary: {
-      backgroundColor: '#FFFFFF',
-      color: '#374151',
-      border: '1px solid #E5E7EB',
-      boxShadow: '0 1px 2px rgba(0,0,0,.06)',
-    },
-    ghost: {
-      backgroundColor: 'transparent',
-      color: '#6B7280',
-      border: 'none',
-    }
-  };
-
-  const hoverStyle = {
-    ...baseStyle,
-    ...kindStyles[kind],
-    transform: 'translateY(-1px)',
-    boxShadow: kind === 'ghost' ? 'none' : '0 8px 24px rgba(0,0,0,.08)',
-    backgroundColor: kind === 'primary' ? '#3730A3' : 
-                   kind === 'secondary' ? '#F9FAFB' : 
-                   'rgba(79, 70, 229, 0.1)'
-  };
-
-  const [currentStyle, setCurrentStyle] = useState({ ...baseStyle, ...kindStyles[kind] });
-
-  return (
-    <button
-      style={currentStyle}
-      onMouseEnter={() => setCurrentStyle(hoverStyle)}
-      onMouseLeave={() => setCurrentStyle({ ...baseStyle, ...kindStyles[kind] })}
-      onClick={onClick}
-      {...props}
-    >
-      {children}
-    </button>
-  );
+    marginBottom: '12px',
+  },
+  statusLabel: {
+    fontSize: '14px',
+    color: WhatsAppColors.textSecondary,
+  },
+  statusValue: {
+    fontSize: '14px',
+    color: WhatsAppColors.textPrimary,
+    fontWeight: '500' as const,
+  },
+  badge: {
+    padding: '4px 12px',
+    borderRadius: '12px',
+    fontSize: '12px',
+    fontWeight: '600' as const,
+  },
+  badgeSuccess: {
+    backgroundColor: 'rgba(0, 168, 132, 0.2)',
+    color: WhatsAppColors.accent,
+  },
+  badgeWarning: {
+    backgroundColor: 'rgba(243, 156, 18, 0.2)',
+    color: '#f39c12',
+  },
+  badgeError: {
+    backgroundColor: 'rgba(231, 76, 60, 0.2)',
+    color: '#e74c3c',
+  },
+  actionButton: {
+    width: '100%',
+    padding: '12px',
+    backgroundColor: WhatsAppColors.accent,
+    color: '#fff',
+    border: 'none',
+    borderRadius: '8px',
+    fontSize: '14px',
+    fontWeight: '600' as const,
+    cursor: 'pointer',
+    transition: 'background-color 0.2s',
+    marginTop: '12px',
+  },
+  quickActionButton: {
+    width: '100%',
+    padding: '10px 16px',
+    backgroundColor: WhatsAppColors.background,
+    color: WhatsAppColors.textPrimary,
+    border: `1px solid ${WhatsAppColors.border}`,
+    borderRadius: '8px',
+    fontSize: '13px',
+    fontWeight: '500' as const,
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+    marginBottom: '8px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  // 主内容区样式
+  mainPanel: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    height: '100%',
+    backgroundColor: WhatsAppColors.background,
+  },
+  mainHeader: {
+    padding: '30px 40px',
+    borderBottom: `1px solid ${WhatsAppColors.border}`,
+    backgroundColor: WhatsAppColors.panelBackground,
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  mainTitle: {
+    fontSize: '32px',
+    fontWeight: '700' as const,
+    color: WhatsAppColors.textPrimary,
+    marginBottom: '8px',
+  },
+  mainSubtitle: {
+    fontSize: '16px',
+    color: WhatsAppColors.textSecondary,
+  },
+  refreshButton: {
+    padding: '10px 20px',
+    backgroundColor: WhatsAppColors.accent,
+    color: '#fff',
+    border: 'none',
+    borderRadius: '8px',
+    fontSize: '14px',
+    fontWeight: '600' as const,
+    cursor: 'pointer',
+    transition: 'background-color 0.2s',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  lastUpdate: {
+    fontSize: '12px',
+    color: WhatsAppColors.textSecondary,
+    marginTop: '4px',
+  },
+  mainBody: {
+    flex: 1,
+    overflowY: 'auto' as const,
+    padding: '30px 40px',
+  },
+  cardsGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+    gap: '20px',
+    marginBottom: '30px',
+  },
+  chartsSection: {
+    marginBottom: '30px',
+  },
+  chartRow: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
+    gap: '20px',
+    marginBottom: '20px',
+  },
+  chartContainer: {
+    backgroundColor: WhatsAppColors.panelBackground,
+    borderRadius: '12px',
+    padding: '20px',
+    border: `1px solid ${WhatsAppColors.border}`,
+  },
+  activitySection: {
+    marginBottom: '30px',
+  },
+  activityHeader: {
+    fontSize: '18px',
+    fontWeight: '600' as const,
+    color: WhatsAppColors.textPrimary,
+    marginBottom: '16px',
+  },
+  activityCard: {
+    backgroundColor: WhatsAppColors.panelBackground,
+    borderRadius: '12px',
+    padding: '16px',
+    border: `1px solid ${WhatsAppColors.border}`,
+    marginBottom: '12px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '16px',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+  },
+  activityIcon: {
+    fontSize: '24px',
+    width: '48px',
+    height: '48px',
+    borderRadius: '50%',
+    backgroundColor: WhatsAppColors.background,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  activityContent: {
+    flex: 1,
+  },
+  activityText: {
+    fontSize: '14px',
+    color: WhatsAppColors.textPrimary,
+    marginBottom: '4px',
+    fontWeight: '500' as const,
+  },
+  activityDetail: {
+    fontSize: '13px',
+    color: WhatsAppColors.textSecondary,
+    marginBottom: '2px',
+  },
+  activityTime: {
+    fontSize: '12px',
+    color: WhatsAppColors.textSecondary,
+  },
+  loadingText: {
+    textAlign: 'center' as const,
+    padding: '40px',
+    color: WhatsAppColors.textSecondary,
+    fontSize: '15px',
+  },
+  clickableCard: {
+    cursor: 'pointer',
+    transition: 'transform 0.2s, box-shadow 0.2s',
+  },
 };
 
-const Card = ({ children, style = {}, hoverable = false, ...props }: CardProps) => {
-  const baseStyle = {
-    backgroundColor: '#FFFFFF',
-    borderRadius: '16px',
-    border: '1px solid #E5E7EB',
-    boxShadow: '0 1px 2px rgba(0,0,0,.06)',
-    padding: '24px',
-    transition: 'all 0.2s ease',
-    ...style
-  };
-
-  const hoverStyle = hoverable ? {
-    ...baseStyle,
-    transform: 'translateY(-2px)',
-    boxShadow: '0 8px 24px rgba(0,0,0,.08)'
-  } : baseStyle;
-
-  const [currentStyle, setCurrentStyle] = useState(baseStyle);
-
-  return (
-    <div
-      style={currentStyle}
-      onMouseEnter={() => hoverable && setCurrentStyle(hoverStyle)}
-      onMouseLeave={() => hoverable && setCurrentStyle(baseStyle)}
-      {...props}
-    >
-      {children}
-    </div>
-  );
-};
-
-const Tag = ({ text, tone = 'info', style = {} }: TagProps) => {
-  const toneStyles = {
-    success: { backgroundColor: 'rgba(5, 150, 105, 0.1)', color: '#059669', border: '1px solid #059669' },
-    warn: { backgroundColor: 'rgba(180, 83, 9, 0.1)', color: '#B45309', border: '1px solid #B45309' },
-    error: { backgroundColor: 'rgba(220, 38, 38, 0.1)', color: '#DC2626', border: '1px solid #DC2626' },
-    info: { backgroundColor: 'rgba(37, 99, 235, 0.1)', color: '#2563EB', border: '1px solid #2563EB' }
-  };
-
-  return (
-    <span
-      style={{
-        padding: '4px 8px',
-        borderRadius: '6px',
-        fontSize: '12px',
-        fontWeight: '500',
-        fontFamily: 'PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, sans-serif',
-        ...toneStyles[tone],
-        ...style
-      }}
-    >
-      {text}
-    </span>
-  );
-};
-
-const Stat = ({ label, value, hint, color = '#4F46E5' }: StatProps) => (
-  <div style={{ textAlign: 'center' }}>
-    <div
-      style={{
-        fontSize: '28px',
-        fontWeight: '600',
-        color: color,
-        fontFamily: 'PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, sans-serif',
-        lineHeight: '1.2',
-        marginBottom: '4px'
-      }}
-    >
-      {value}
-    </div>
-    <div
-      style={{
-        fontSize: '14px',
-        fontWeight: '500',
-        color: '#111827',
-        fontFamily: 'PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, sans-serif',
-        marginBottom: '2px'
-      }}
-    >
-      {label}
-    </div>
-    <div
-      style={{
-        fontSize: '12px',
-        color: '#6B7280',
-        fontFamily: 'PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, sans-serif'
-      }}
-    >
-      {hint}
-    </div>
-  </div>
-);
-
-const Row = ({ contact, messages, lastActive, status, onClick }: RowProps) => (
-  <div
-    style={{
-      padding: '12px',
-      borderRadius: '12px',
-      border: '1px solid #E5E7EB',
-      marginBottom: '8px',
-      cursor: 'pointer',
-      transition: 'all 0.2s ease',
-      backgroundColor: '#FFFFFF'
-    }}
-    onMouseEnter={(e) => {
-      e.currentTarget.style.backgroundColor = '#F8FAFF';
-      e.currentTarget.style.borderColor = '#4F46E5';
-    }}
-    onMouseLeave={(e) => {
-      e.currentTarget.style.backgroundColor = '#FFFFFF';
-      e.currentTarget.style.borderColor = '#E5E7EB';
-    }}
-    onClick={onClick}
-  >
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-      <div>
-        <div
-          style={{
-            fontSize: '14px',
-            fontWeight: '500',
-            color: '#111827',
-            fontFamily: 'PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, sans-serif',
-            marginBottom: '2px'
-          }}
-        >
-          {contact}
-        </div>
-        <div
-          style={{
-            fontSize: '12px',
-            color: '#6B7280',
-            fontFamily: 'PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, sans-serif'
-          }}
-        >
-          {messages} 条消息 · {lastActive}
-        </div>
-      </div>
-      <div>{status}</div>
-    </div>
-  </div>
-);
-
-const Item = ({ label, value, style = {} }: ItemProps) => (
-  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', ...style }}>
-    <span
-      style={{
-        fontSize: '14px',
-        color: '#6B7280',
-        fontFamily: 'PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, sans-serif'
-      }}
-    >
-      {label}
-    </span>
-    <span
-      style={{
-        fontSize: '14px',
-        fontWeight: '500',
-        color: '#111827',
-        fontFamily: 'PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, sans-serif'
-      }}
-    >
-      {value}
-    </span>
-  </div>
-);
-
-
-
-export default function DashboardInline() {
+export default function DashboardPage() {
+  const router = useRouter();
   const [status, setStatus] = useState<any>(null);
-  const [threads, setThreads] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [showQRDialog, setShowQRDialog] = useState(false);
-
-  // 使用WebSocket实时更新
-  const { isConnected } = useWebSocket({
-    onWhatsAppStatus: (newStatus) => {
-      console.log('🔄 收到WhatsApp状态更新:', newStatus);
-      setStatus(newStatus);
-    },
-    onQRUpdate: (qr) => {
-      console.log('📱 收到二维码更新');
-      // 更新状态中的二维码
-      setStatus(prev => ({
-        ...prev,
-        qr: qr
-      }));
-    },
-    onNewMessage: (message) => {
-      console.log('💬 收到新消息:', message);
-      // 更新对话列表
-      setThreads(prev => {
-        return prev.map(thread => {
-          if (thread.id === message.threadId) {
-            return {
-              ...thread,
-              messagesCount: thread.messagesCount + 1,
-              latestMessageAt: new Date(message.timestamp * 1000).toISOString(),
-              lastHumanAt: !message.fromMe ? new Date(message.timestamp * 1000).toISOString() : thread.lastHumanAt,
-              lastBotAt: message.fromMe ? new Date(message.timestamp * 1000).toISOString() : thread.lastBotAt
-            };
-          }
-          return thread;
-        });
-      });
-    },
-    onConnected: () => {
-      console.log('✅ WhatsApp已连接');
-      // 停止轮询，使用WebSocket更新
-    },
-    onDisconnected: () => {
-      console.log('❌ WhatsApp已断开');
-      // 可以显示离线状态
-    }
-  });
-
-
-  const loginStatus = useMemo(() => {
-    const rawStatus = String(status?.status ?? '').toUpperCase();
-    const rawState = String(status?.state ?? '').toUpperCase();
-    const awaitingQr = rawStatus === 'QR' || rawState.includes('QR');
-    if (rawStatus === 'READY') {
-      return {
-        text: '已连接',
-        tone: 'success' as const,
-        description: status?.phoneE164 ? `已登录账号：${status.phoneE164}` : 'WhatsApp 会话已就绪',
-        showAction: false,
-      };
-    }
-    if (awaitingQr) {
-      return {
-        text: '待扫码',
-        tone: 'warn' as const,
-        description: '请使用手机 WhatsApp 扫描二维码完成登录',
-        showAction: true,
-      };
-    }
-    if (rawStatus === 'AUTHENTICATING' || rawStatus === 'INITIALIZING') {
-      return {
-        text: rawStatus === 'AUTHENTICATING' ? '认证中' : '启动中',
-        tone: 'info' as const,
-        description: '客户端正在连接，请稍候…',
-        showAction: false,
-      };
-    }
-    if (rawStatus === 'DISCONNECTED' || rawStatus === 'FAILED') {
-      return {
-        text: rawStatus === 'FAILED' ? '连接失败' : '已断开',
-        tone: 'error' as const,
-        description: '需要重新扫码登录以恢复连接',
-        showAction: true,
-      };
-    }
-    return {
-      text: rawStatus || '未知状态',
-      tone: 'info' as const,
-      description: '正在等待 WhatsApp 客户端反馈…',
-      showAction: false,
-    };
-  }, [status]);
-
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  
+  // 在客户端挂载后初始化时间
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [statusData, { threads: threadsData }] = await Promise.all([
-          api.getStatus(), 
-          api.getThreads()
-        ]);
-        setStatus(statusData);
-        setThreads(threadsData);
-      } catch (error) {
-        console.warn('API服务器连接失败，使用模拟数据:', error);
-        // TODO: 接口对接点 - 使用模拟数据
-        setStatus({
-          online: true,
-          sessionReady: true,
-          cooldownHours: 24,
-          perContactReplyCooldownMinutes: 10,
-          contactCount: 5,
-          latestMessageAt: new Date().toISOString(),
-          qrCode: null
-        });
-        setThreads([
-          {
-            id: '1',
-            contactId: '1',
-            contact: { 
-              id: '1', 
-              phoneE164: '+1234567890', 
-              name: '张三',
-              cooldownUntil: null,
-              cooldownRemainingSeconds: 0
-            },
-            aiEnabled: true,
-            messagesCount: 15,
-            latestMessageAt: new Date(Date.now() - 300000).toISOString(),
-            lastHumanAt: new Date(Date.now() - 600000).toISOString(),
-            lastBotAt: new Date(Date.now() - 120000).toISOString(),
-            createdAt: new Date(Date.now() - 86400000).toISOString(),
-            updatedAt: new Date(Date.now() - 300000).toISOString()
-          },
-          {
-            id: '2',
-            contactId: '2',
-            contact: { 
-              id: '2', 
-              phoneE164: '+0987654321', 
-              name: '李四',
-              cooldownUntil: null,
-              cooldownRemainingSeconds: 0
-            },
-            aiEnabled: false,
-            messagesCount: 8,
-            latestMessageAt: new Date(Date.now() - 600000).toISOString(),
-            lastHumanAt: new Date(Date.now() - 300000).toISOString(),
-            lastBotAt: new Date(Date.now() - 900000).toISOString(),
-            createdAt: new Date(Date.now() - 172800000).toISOString(),
-            updatedAt: new Date(Date.now() - 600000).toISOString()
-          },
-          {
-            id: '3',
-            contactId: '3',
-            contact: { 
-              id: '3', 
-              phoneE164: '+1122334455', 
-              name: '王五',
-              cooldownUntil: null,
-              cooldownRemainingSeconds: 0
-            },
-            aiEnabled: true,
-            messagesCount: 23,
-            latestMessageAt: new Date(Date.now() - 180000).toISOString(),
-            lastHumanAt: new Date(Date.now() - 360000).toISOString(),
-            lastBotAt: new Date(Date.now() - 60000).toISOString(),
-            createdAt: new Date(Date.now() - 259200000).toISOString(),
-            updatedAt: new Date(Date.now() - 180000).toISOString()
-          }
-        ]);
-      } finally {
-        setLoading(false);
-      }
-    };
+    setLastUpdate(new Date());
+  }, []);
+  
+  // 统计数据状态
+  const [overviewStats, setOverviewStats] = useState<any>(null);
+  const [messageStats, setMessageStats] = useState<any>(null);
+  const [activityStats, setActivityStats] = useState<any>(null);
+  const [batchStats, setBatchStats] = useState<any>(null);
 
-    fetchData();
+  // 加载所有数据
+  const loadAllData = useCallback(async (isRefresh = false) => {
+    try {
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+
+      const [statusData, overviewData, messagesData, activityData, batchData] = await Promise.all([
+        api.getStatus().catch(() => null),
+        api.stats.overview().catch(() => null),
+        api.stats.messages().catch(() => null),
+        api.stats.activity().catch(() => null),
+        api.batch.getStats().catch(() => null),
+      ]);
+      
+      if (statusData) setStatus(statusData);
+      if (overviewData) setOverviewStats(overviewData);
+      if (messagesData) setMessageStats(messagesData);
+      if (activityData) setActivityStats(activityData);
+      if (batchData) setBatchStats(batchData);
+      
+      setLastUpdate(new Date());
+    } catch (error) {
+      console.error('加载数据失败:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, []);
 
-  if (loading || !status) {
-    return (
-      <div 
-        style={{
-          minHeight: '100vh',
-          background: 'linear-gradient(to bottom, #EEF2FF, #FFFFFF)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontFamily: 'PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, sans-serif'
-        }}
-      >
-        <div style={{ textAlign: 'center' }}>
-          <div 
-            style={{
-              width: '32px',
-              height: '32px',
-              border: '3px solid #E5E7EB',
-              borderTop: '3px solid #4F46E5',
-              borderRadius: '50%',
-              animation: 'spin 1s linear infinite',
-              margin: '0 auto 16px'
-            }}
-          />
-          <p style={{ color: '#6B7280', fontSize: '14px' }}>加载中...</p>
-        </div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    loadAllData();
+    
+    // 每 30 秒自动刷新
+    const interval = setInterval(() => {
+      loadAllData(true);
+    }, 30000);
+    
+    return () => clearInterval(interval);
+  }, [loadAllData]);
 
-  // TODO: 接口对接点 - 计算统计数据
-  const totalConversations = threads.length;
-  const aiActiveCount = threads.filter(t => t.aiEnabled).length;
-  const active24hCount = threads.filter(t => {
-    const lastActivity = new Date(t.updatedAt).getTime();
-    const now = new Date().getTime();
-    return (now - lastActivity) < 24 * 60 * 60 * 1000;
-  }).length;
-  const avgMessages = threads.length > 0 ? Math.round(threads.reduce((sum: number, t: any) => sum + (t.messagesCount || 0), 0) / threads.length) : 0;
+  // WebSocket 实时更新
+  useWebSocket({
+    onStatusUpdate: (newStatus) => {
+      console.log('收到 WhatsApp 状态更新:', newStatus);
+      setStatus((prev: any) => ({ ...prev, ...newStatus }));
+    },
+    onNewMessage: () => {
+      console.log('收到新消息，刷新统计数据');
+      loadAllData(true);
+    },
+  });
 
-  const handleExport = () => {
-    console.log('导出数据'); // TODO: 接口对接点
-  };
-
-  const handleRefresh = () => {
-    console.log('刷新数据'); // TODO: 接口对接点
-    window.location.reload();
-  };
-
-  const handleAddAccount = async () => {
+  const handleLogin = async () => {
     try {
-      // 先检查WhatsApp服务状态
-      const status = await api.getStatus();
-      console.log('WhatsApp服务状态:', status);
-      
-      if (status.status === 'QR' || status.status === 'INITIALIZING') {
-        // 如果已经在显示QR码或初始化中，直接显示对话框
-        console.log('WhatsApp服务已经在运行，直接显示QR码');
-        setShowQRDialog(true);
-      } else if (status.status === 'DISCONNECTED' || status.status === 'FAILED') {
-        // 如果服务离线或失败，启动登录流程
-        console.log('启动新的登录流程');
-        await api.startLogin();
-        setShowQRDialog(true);
-      } else {
-        // 其他状态（如READY），直接显示对话框
-        console.log('WhatsApp服务状态:', status.status, '直接显示QR码');
-        setShowQRDialog(true);
-      }
+      await api.startLogin();
+      console.log('登录流程已启动');
+      setShowQRDialog(true);
     } catch (error) {
       console.error('启动登录失败:', error);
-      alert('启动登录失败: ' + (error as Error).message);
+      alert('启动登录失败，请重试');
     }
   };
 
-  const handleQRSuccess = () => {
-
-    setShowQRDialog(false);
-
-    console.log('WhatsApp 登录成功');
-
-    window.location.reload();
-
+  const getStatusBadge = () => {
+    if (!status) return { text: '未知', style: styles.badgeError };
+    
+    const statusText = String(status.status || '').toUpperCase();
+    if (statusText === 'READY') {
+      return { text: '已连接', style: styles.badgeSuccess };
+    }
+    if (statusText === 'QR') {
+      return { text: '待扫码', style: styles.badgeWarning };
+    }
+    return { text: '离线', style: styles.badgeError };
   };
 
+  const statusBadge = getStatusBadge();
 
+  // 格式化时间
+  const formatTime = (date: Date | null) => {
+    if (!date) return '--:--:--';
+    return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  };
 
-  const handleLogout = async () => {
-    if (!confirm('确定要退出登录吗？')) {
-      return;
+  // 格式化相对时间
+  const formatRelativeTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+    
+    if (minutes < 1) return '刚刚';
+    if (minutes < 60) return `${minutes} 分钟前`;
+    if (hours < 24) return `${hours} 小时前`;
+    return `${days} 天前`;
+  };
+
+  // 准备图表数据
+  const messagesTrendData = useMemo(() => {
+    if (!messageStats?.weeklyTrend) return [];
+    return messageStats.weeklyTrend.map((day: any) => ({
+      date: new Date(day.date).toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' }),
+      消息数: day.count,
+    }));
+  }, [messageStats]);
+
+  const successRateData = useMemo(() => {
+    if (!messageStats?.today) return [];
+    const { success = 0, failed = 0 } = messageStats.today;
+    return [
+      { name: '成功', value: success, color: WhatsAppColors.accent },
+      { name: '失败', value: failed, color: '#e74c3c' },
+    ];
+  }, [messageStats]);
+
+  const batchOperationsData = useMemo(() => {
+    if (!batchStats?.byType) return [];
+    return Object.entries(batchStats.byType).map(([name, value]: [string, any]) => ({
+      name: name === 'import' ? '导入' : name === 'send' ? '发送' : name === 'tag' ? '标签' : name === 'delete' ? '删除' : name,
+      数量: value,
+    }));
+  }, [batchStats]);
+
+  // 准备活动流数据
+  const activities = useMemo(() => {
+    const result: any[] = [];
+    
+    // 添加最近联系人活动
+    if (activityStats?.recentContacts) {
+      activityStats.recentContacts.slice(0, 5).forEach((contact: any) => {
+        result.push({
+          type: 'contact',
+          icon: '👤',
+          text: `与 ${contact.name} 的对话`,
+          detail: `${contact.messageCount} 条消息`,
+          time: contact.lastActivity,
+          onClick: () => router.push('/chat'),
+        });
+      });
     }
     
-    try {
-      await api.logout();
-      console.log('退出登录成功');
-      alert('退出登录成功！');
-      // 刷新页面以更新状态
-      window.location.reload();
-    } catch (error) {
-      console.error('退出登录失败:', error);
-      alert('退出登录失败: ' + (error as Error).message);
+    // 添加最近批量操作
+    if (activityStats?.recentBatches) {
+      activityStats.recentBatches.slice(0, 5).forEach((batch: any) => {
+        result.push({
+          type: 'batch',
+          icon: '⚡',
+          text: batch.title || '批量操作',
+          detail: `${batch.successCount}/${batch.totalCount} 成功`,
+          time: batch.createdAt,
+          onClick: () => router.push('/batch'),
+        });
+      });
     }
-  };
+    
+    // 按时间排序
+    result.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+    
+    return result.slice(0, 10);
+  }, [activityStats, router]);
 
-  const handleOpenThread = async (threadId: string) => {
-    try {
-      const threadData = await api.getThreadMessages(threadId);
-      console.log('打开会话:', threadData);
-      // TODO: 实现打开会话对话框或跳转到会话详情页
-    } catch (error) {
-      console.error('获取会话详情失败:', error);
-    }
-  };
+  // 左侧面板
+  const listPanel = (
+    <>
+      <div style={styles.listHeader}>
+        <div style={styles.headerTitle}>仪表盘</div>
+        <div style={styles.headerSubtitle}>系统概览</div>
+      </div>
 
-  return (
-    <div 
-      style={{
-        minHeight: '100vh',
-        background: 'linear-gradient(to bottom, #EEF2FF, #FFFFFF)',
-        fontFamily: 'PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, sans-serif'
-      }}
-    >
-      {/* 主内容区域 */}
-      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px' }}>
-        {/* 页面标题 */}
-        <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <div>
-            <h1 style={{ fontSize: '32px', fontWeight: 600, color: '#111827', margin: 0 }}>
-              操作台
-            </h1>
-            <p style={{ fontSize: '16px', color: '#6B7280', margin: '8px 0 0 0' }}>
-              关键指标与最新动态
-              {isConnected && (
-                <span style={{ marginLeft: '12px', fontSize: '12px', color: '#10B981' }}>
-                  🔌 实时连接
-                </span>
-              )}
-            </p>
-          </div>
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-            <Button
-              kind="primary"
-              onClick={handleAddAccount}
-              style={{ minWidth: '120px' }}
-            >
-              {loginStatus.text === '已连接' ? '重新扫码' : '添加账号'}
-            </Button>
-            <Button
-              kind="secondary"
-              onClick={handleRefresh}
-              style={{ minWidth: '80px' }}
-            >
-              刷新
-            </Button>
-          </div>
-        </div>
-        {/* KPI统计卡片 */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(4, 1fr)',
-            gap: '16px',
-            marginBottom: '24px'
-          }}
-        >
-          <Card>
-            <Stat label="总对话数" value={totalConversations} hint="所有会话" color="#4F46E5" />
-          </Card>
-          <Card>
-            <Stat label="AI活跃" value={aiActiveCount} hint="自动回复中" color="#059669" />
-          </Card>
-          <Card>
-            <Stat label="24h活跃" value={active24hCount} hint="最近活跃" color="#2563EB" />
-          </Card>
-          <Card>
-            <Stat label="平均消息" value={avgMessages} hint="每会话消息数" color="#B45309" />
-          </Card>
+      <div style={styles.statsGrid}>
+        <div style={styles.statCard}>
+          <div style={styles.statLabel}>总联系人</div>
+          <div style={styles.statValue}>{overviewStats?.contacts?.total || 0}</div>
+          <div style={styles.statHint}>活跃：{overviewStats?.contacts?.active || 0}</div>
         </div>
 
-        {/* 主体双栏布局 */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '2fr 1fr',
-            gap: '16px'
+        <div style={styles.statCard}>
+          <div style={styles.statLabel}>今日消息</div>
+          <div style={styles.statValue}>{messageStats?.today?.total || 0}</div>
+          <div style={styles.statHint}>发送：{messageStats?.today?.sent || 0}</div>
+        </div>
+
+        <div style={styles.statCard}>
+          <div style={styles.statLabel}>批量操作</div>
+          <div style={styles.statValue}>{batchStats?.total || 0}</div>
+          <div style={styles.statHint}>成功率：{batchStats?.successRate || 0}%</div>
+        </div>
+      </div>
+
+      <div style={styles.statusSection}>
+        <div style={styles.sectionTitle}>系统状态</div>
+        <div style={styles.statusCard}>
+          <div style={styles.statusRow}>
+            <span style={styles.statusLabel}>WhatsApp</span>
+            <span style={{ ...styles.badge, ...statusBadge.style }}>
+              {statusBadge.text}
+            </span>
+          </div>
+          {status?.phoneE164 && (
+            <div style={styles.statusRow}>
+              <span style={styles.statusLabel}>账号</span>
+              <span style={styles.statusValue}>{status.phoneE164}</span>
+            </div>
+          )}
+          
+          {statusBadge.text !== '已连接' && (
+            <button
+              style={styles.actionButton}
+              onClick={handleLogin}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = WhatsAppColors.accentHover;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = WhatsAppColors.accent;
+              }}
+            >
+              扫码登录
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* 快捷操作 */}
+      <div style={styles.statusSection}>
+        <div style={styles.sectionTitle}>快捷操作</div>
+        <button
+          style={styles.quickActionButton}
+          onClick={() => router.push('/chat')}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = WhatsAppColors.border;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = WhatsAppColors.background;
           }}
         >
-          {/* 左侧：最近会话列表 */}
-          <Card>
-            <div
-              style={{
-                fontSize: '16px',
-                fontWeight: '600',
-                color: '#111827',
-                marginBottom: '16px',
-                fontFamily: 'PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, sans-serif'
-              }}
-            >
-              最近会话
-            </div>
-            
-            {/* 表头 */}
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr auto',
-                padding: '12px',
-                backgroundColor: '#F9FAFB',
-                borderRadius: '10px',
-                marginBottom: '8px',
-                fontSize: '12px',
-                fontWeight: '600',
-                color: '#6B7280',
-                fontFamily: 'PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, sans-serif'
-              }}
-            >
-              <span>联系人与消息</span>
-              <span>状态</span>
-            </div>
+          <span>💬</span> 对话
+        </button>
+        <button
+          style={styles.quickActionButton}
+          onClick={() => router.push('/contacts')}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = WhatsAppColors.border;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = WhatsAppColors.background;
+          }}
+        >
+          <span>👥</span> 联系人
+        </button>
+        <button
+          style={styles.quickActionButton}
+          onClick={() => router.push('/batch')}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = WhatsAppColors.border;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = WhatsAppColors.background;
+          }}
+        >
+          <span>⚡</span> 批量操作
+        </button>
+        <button
+          style={styles.quickActionButton}
+          onClick={() => router.push('/templates')}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = WhatsAppColors.border;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = WhatsAppColors.background;
+          }}
+        >
+          <span>📄</span> 模板
+        </button>
+        <button
+          style={styles.quickActionButton}
+          onClick={() => router.push('/knowledge')}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = WhatsAppColors.border;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = WhatsAppColors.background;
+          }}
+        >
+          <span>💡</span> 知识库
+        </button>
+        <button
+          style={styles.quickActionButton}
+          onClick={() => router.push('/settings')}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = WhatsAppColors.border;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = WhatsAppColors.background;
+          }}
+        >
+          <span>⚙️</span> 设置
+        </button>
+      </div>
+    </>
+  );
 
-            {/* 会话列表 */}
-            <div>
-              {threads.slice(0, 8).map((thread) => (
-                <Row
-                  key={thread.id}
-                  contact={thread.contact.name || thread.contact.phoneE164}
-                  messages={thread.messagesCount}
-                  lastActive={new Date(thread.updatedAt).toLocaleString('zh-CN', { 
-                    month: 'short', 
-                    day: 'numeric', 
-                    hour: '2-digit', 
-                    minute: '2-digit' 
-                  })}
-                  status={<Tag text={thread.aiEnabled ? 'AI活跃' : '人工接管'} tone={thread.aiEnabled ? 'success' : 'info'} />}
-                  onClick={() => handleOpenThread(thread.id)}
+  // 主内容区
+  const mainContent = (
+    <div style={styles.mainPanel}>
+      <div style={styles.mainHeader}>
+        <div>
+          <div style={styles.mainTitle}>WhatsApp 自动化系统</div>
+          <div style={styles.mainSubtitle}>
+            智能客服 · 自动养号 · 批量营销
+          </div>
+          <div style={styles.lastUpdate}>
+            最后更新：{formatTime(lastUpdate)}
+          </div>
+        </div>
+        <button
+          style={styles.refreshButton}
+          onClick={() => loadAllData(true)}
+          disabled={refreshing}
+          onMouseEnter={(e) => {
+            if (!refreshing) {
+              e.currentTarget.style.backgroundColor = WhatsAppColors.accentHover;
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!refreshing) {
+              e.currentTarget.style.backgroundColor = WhatsAppColors.accent;
+            }
+          }}
+        >
+          <span>{refreshing ? '刷新中...' : '🔄 刷新数据'}</span>
+        </button>
+      </div>
+
+      <div style={styles.mainBody}>
+        {loading ? (
+          <div style={styles.loadingText}>加载数据中...</div>
+        ) : (
+          <>
+            {/* 核心统计卡片网格 */}
+            <div style={styles.cardsGrid}>
+              <div
+                onClick={() => router.push('/chat')}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+                style={styles.clickableCard}
+              >
+                <StatCard
+                  title="今日发送"
+                  value={messageStats?.today?.sent || 0}
+                  icon="📤"
+                  color={WhatsAppColors.accent}
+                  subtitle="点击查看对话"
                 />
-              ))}
+              </div>
+              
+              <div
+                onClick={() => router.push('/chat')}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+                style={styles.clickableCard}
+              >
+                <StatCard
+                  title="今日接收"
+                  value={messageStats?.today?.received || 0}
+                  icon="📥"
+                  color="#3498db"
+                  subtitle="点击查看对话"
+                />
+              </div>
+              
+              <div
+                onClick={() => router.push('/chat')}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+                style={styles.clickableCard}
+              >
+                <StatCard
+                  title="消息成功率"
+                  value={`${messageStats?.today?.successRate || 100}%`}
+                  icon="✅"
+                  color="#00a884"
+                  subtitle="本周表现"
+                />
+              </div>
+              
+              <div
+                onClick={() => router.push('/contacts')}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+                style={styles.clickableCard}
+              >
+                <StatCard
+                  title="联系人总数"
+                  value={overviewStats?.contacts?.total || 0}
+                  icon="👥"
+                  color="#9b59b6"
+                  subtitle={`活跃：${overviewStats?.contacts?.active || 0}`}
+                />
+              </div>
+              
+              <div
+                onClick={() => router.push('/templates')}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+                style={styles.clickableCard}
+              >
+                <StatCard
+                  title="模板数量"
+                  value={overviewStats?.templates?.total || 0}
+                  icon="📄"
+                  color="#f39c12"
+                  subtitle="点击查看模板"
+                />
+              </div>
+              
+              <div
+                onClick={() => router.push('/batch')}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+                style={styles.clickableCard}
+              >
+                <StatCard
+                  title="批量操作"
+                  value={batchStats?.total || 0}
+                  icon="⚡"
+                  color="#e67e22"
+                  subtitle={`成功率：${batchStats?.successRate || 0}%`}
+                />
+              </div>
+              
+              <div
+                onClick={() => router.push('/knowledge')}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+                style={styles.clickableCard}
+              >
+                <StatCard
+                  title="知识库"
+                  value={overviewStats?.knowledge?.total || 0}
+                  icon="💡"
+                  color="#1abc9c"
+                  subtitle="点击查看知识库"
+                />
+              </div>
+              
+              <div
+                onClick={() => router.push('/chat')}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+                style={styles.clickableCard}
+              >
+                <StatCard
+                  title="活跃会话"
+                  value={overviewStats?.threads?.total || 0}
+                  icon="🔄"
+                  color="#3498db"
+                  subtitle="点击查看会话"
+                />
+              </div>
             </div>
-          </Card>
 
-          {/* 右侧：系统状态和日志 */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {/* 系统状态卡片 */}
-            <Card>
-              <div
-                style={{
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  color: '#111827',
-                  marginBottom: '16px',
-                  fontFamily: 'PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, sans-serif'
-                }}
-              >
-                系统状态
-              </div>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  justifyContent: 'space-between',
-                  gap: '12px',
-                  marginBottom: '16px'
-                }}
-              >
-                <div style={{ textAlign: 'left', flex: 1 }}>
-                  <div style={{ fontSize: '14px', color: '#1F2937', fontWeight: 600 }}>WhatsApp 登录状态</div>
-                  <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px', lineHeight: 1.4 }}>{loginStatus.description}</div>
-                  {status.phoneE164 && loginStatus.tone === 'success' && (
-                    <div style={{ fontSize: '12px', color: '#2563EB', marginTop: '6px' }}>当前账号：{status.phoneE164}</div>
-                  )}
-                </div>
-                <Tag text={loginStatus.text} tone={loginStatus.tone} />
-              </div>
-              <div style={{ marginBottom: '16px', display: 'flex', gap: '8px' }}>
-                <Button
-                  kind="primary"
-                  onClick={handleAddAccount}
-                  style={{ flex: 1, justifyContent: 'center' }}
-                >
-                  {loginStatus.text === '已连接' ? '重新扫码' : '扫码登录'}
-                </Button>
-                {loginStatus.text === '已连接' && (
-                  <Button
-                    kind="secondary"
-                    onClick={handleLogout}
-                    style={{ flex: 1, justifyContent: 'center' }}
-                  >
-                    退出登录
-                  </Button>
+            {/* 图表区域 */}
+            <div style={styles.chartsSection}>
+              <div style={styles.chartRow}>
+                {messagesTrendData.length > 0 && (
+                  <div style={styles.chartContainer}>
+                    <LineChart
+                      data={messagesTrendData}
+                      lines={[
+                        { dataKey: '消息数', name: '消息数', color: WhatsAppColors.accent },
+                      ]}
+                      title="本周消息趋势"
+                      height={250}
+                    />
+                  </div>
+                )}
+                
+                {successRateData.length > 0 && successRateData.some(d => d.value > 0) && (
+                  <div style={styles.chartContainer}>
+                    <PieChart
+                      data={successRateData}
+                      title="今日消息成功率"
+                      height={250}
+                    />
+                  </div>
                 )}
               </div>
-              <Item label="会话状态" value={status.sessionReady ? '就绪' : '未就绪'} />
-              <Item label="冷却时间" value={`${status.cooldownHours} 小时`} />
-              <Item label="联系人数量" value={status.contactCount} />
-              <Item label="自动回复间隔" value={`${status.perContactReplyCooldownMinutes} 分钟`} />
-            </Card>
-            
-            {/* 活跃日志卡片 */}
-            <Card>
-              <div
-                style={{
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  color: '#111827',
-                  marginBottom: '16px',
-                  fontFamily: 'PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, sans-serif'
-                }}
-              >
-                活跃日志
-              </div>
-              <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
-                {[
-                  { text: 'AI自动回复张三', time: '2分钟前', type: 'success' },
-                  { text: '李四会话转人工', time: '5分钟前', type: 'info' },
-                  { text: '王五发送新消息', time: '8分钟前', type: 'success' },
-                  { text: '系统检查完成', time: '15分钟前', type: 'info' },
-                  { text: '冷却时间重置', time: '1小时前', type: 'warn' }
-                ].map((log, index) => (
-                  <div key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', padding: '8px 0' }}>
-                    <span style={{ fontSize: '13px', color: '#374151', flex: 1 }}>{log.text}</span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <Tag text={log.time} tone="info" style={{ fontSize: '11px', padding: '2px 6px' }} />
+              
+              {batchOperationsData.length > 0 && (
+                <div style={styles.chartContainer}>
+                  <BarChart
+                    data={batchOperationsData}
+                    bars={[
+                      { dataKey: '数量', name: '操作数量', color: WhatsAppColors.accent },
+                    ]}
+                    title="批量操作统计"
+                    height={250}
+                    layout="vertical"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* 最近活动 */}
+            {activities.length > 0 && (
+              <div style={styles.activitySection}>
+                <div style={styles.activityHeader}>最近活动</div>
+                {activities.map((activity, index) => (
+                  <div
+                    key={index}
+                    style={styles.activityCard}
+                    onClick={activity.onClick}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = WhatsAppColors.background;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = WhatsAppColors.panelBackground;
+                    }}
+                  >
+                    <div style={styles.activityIcon}>{activity.icon}</div>
+                    <div style={styles.activityContent}>
+                      <div style={styles.activityText}>{activity.text}</div>
+                      <div style={styles.activityDetail}>{activity.detail}</div>
+                      <div style={styles.activityTime}>{formatRelativeTime(activity.time)}</div>
                     </div>
                   </div>
                 ))}
               </div>
-            </Card>
-          </div>
-        </div>
+            )}
+          </>
+        )}
       </div>
-
-      {/* 二维码登录对话框 */}
-      <QRCodeDialog 
-        isOpen={showQRDialog}
-        onClose={() => setShowQRDialog(false)}
-        onSuccess={handleQRSuccess}
-      />
-
-      {/* CSS动画 */}
-      <style jsx>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      `}</style>
     </div>
   );
-}
 
-/* 
-=======================
-自检清单（请在提交底部注释勾选）
-=======================
-- [x] 主容器 maxWidth 居中，内容不再挤在左侧
-- [x] KPI 四卡等宽铺满一行，数值清晰
-- [x] 主体区域左右 2:1，右侧再无大片留白
-- [x] 卡片/按钮 hover 有阴影与色彩反馈
-- [x] 颜色分明：主色/灰阶/语义 Tag 清晰可辨
-- [x] 纯内联样式，无任何 CSS/类名
-- [x] 页面首屏信息大幅增加，滚动明显减少
-*/
+  return (
+    <>
+      <WhatsAppLayout
+        sidebar={<Sidebar />}
+        listPanel={listPanel}
+        mainContent={mainContent}
+      />
+      <QRCodeDialog
+        isOpen={showQRDialog}
+        onClose={() => setShowQRDialog(false)}
+        onSuccess={() => {
+          setShowQRDialog(false);
+          loadAllData();
+          setTimeout(() => {
+            window.location.reload();
+          }, 1000);
+        }}
+      />
+    </>
+  );
+}

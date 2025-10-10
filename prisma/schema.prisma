@@ -60,6 +60,7 @@ model Thread {
   takenOverAt  DateTime?
   lastHumanAt  DateTime?
   lastBotAt    DateTime?
+  autoTranslate Boolean  @default(false) // 是否启用自动翻译
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   contact      Contact   @relation(fields: [contactId], references: [id])
@@ -67,14 +68,15 @@ model Thread {
 }
 
 model Message {
-  id          String           @id @default(cuid())
-  threadId    String
-  externalId  String?          @unique
-  direction   MessageDirection
-  text        String?
-  status      MessageStatus    @default(SENT)
-  createdAt   DateTime         @default(now())
-  thread      Thread           @relation(fields: [threadId], references: [id])
+  id             String           @id @default(cuid())
+  threadId       String
+  externalId     String?          @unique
+  direction      MessageDirection
+  text           String?
+  translatedText String?          // 翻译后的文本
+  status         MessageStatus    @default(SENT)
+  createdAt      DateTime         @default(now())
+  thread         Thread           @relation(fields: [threadId], references: [id])
 
   @@index([threadId, createdAt])
 }
@@ -230,4 +232,21 @@ model FAQCategory {
   sortOrder   Int       @default(0)
   isActive    Boolean   @default(true)
   createdAt   DateTime  @default(now())
+}
+
+// 翻译缓存表
+model Translation {
+  id             String   @id @default(cuid())
+  originalText   String   // 原文
+  translatedText String   // 译文
+  sourceLang     String   // 源语言（auto-detect）
+  targetLang     String   // 目标语言（zh）
+  textHash       String   @unique // MD5 hash for caching
+  provider       String   @default("baidu") // 翻译服务提供商
+  usageCount     Int      @default(1) // 使用次数
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([textHash])
+  @@map("translations")
 }

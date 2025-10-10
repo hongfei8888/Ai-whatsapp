@@ -28,6 +28,127 @@ const categoryParamsSchema = z.object({
 
 // 知识库路由处理器
 export async function knowledgeRoutes(fastify: FastifyInstance) {
+  // 搜索知识库（必须在 :id 之前）
+  fastify.post('/knowledge/search', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const body = z.object({
+        query: z.string().min(1),
+        category: z.string().optional(),
+        limit: z.number().int().min(1).max(50).optional(),
+        minScore: z.number().min(0).max(1).optional(),
+      }).parse(request.body);
+      
+      const results = await KnowledgeService.searchKnowledge(
+        body.query, 
+        { 
+          category: body.category, 
+          limit: body.limit,
+          minScore: body.minScore
+        }
+      );
+      
+      logger.info('Knowledge search completed', { query: body.query, count: results.length } as any);
+      
+      return reply.send({
+        ok: true,
+        data: results,
+        meta: {
+          query: body.query,
+          count: results.length,
+        },
+      });
+    } catch (error) {
+      logger.error('Failed to search knowledge', { error } as any);
+      
+      return reply.code(500).send({
+        ok: false,
+        code: 'INTERNAL_ERROR',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  // 获取最佳答案（必须在 :id 之前）
+  fastify.post('/knowledge/best-answer', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const body = z.object({
+        question: z.string().min(1),
+      }).parse(request.body);
+      
+      const answer = await KnowledgeService.findBestAnswer(body.question);
+      
+      if (answer) {
+        // 增加使用计数
+        await KnowledgeService.incrementUsage(answer.id);
+      }
+      
+      return reply.send({
+        ok: true,
+        data: answer,
+        meta: {
+          question: body.question,
+          found: !!answer,
+        },
+      });
+    } catch (error) {
+      logger.error('Failed to find best answer', { error } as any);
+      
+      return reply.code(500).send({
+        ok: false,
+        code: 'INTERNAL_ERROR',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  // 获取热门知识库条目（必须在 :id 之前）
+  fastify.get('/knowledge/popular', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const query = z.object({
+        limit: z.string().transform(val => parseInt(val, 10)).optional(),
+      }).parse(request.query);
+      
+      const items = await KnowledgeService.getPopularItems(query.limit);
+      
+      logger.info('Fetched popular knowledge items', { count: items.length } as any);
+      
+      return reply.send({
+        ok: true,
+        data: items,
+      });
+    } catch (error) {
+      logger.error('Failed to get popular knowledge items', { error } as any);
+      
+      return reply.code(500).send({
+        ok: false,
+        code: 'INTERNAL_ERROR',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  // 获取知识库统计（必须在 :id 之前）
+  fastify.get('/knowledge/stats', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const stats = await KnowledgeService.getKnowledgeStats();
+      
+      logger.info('Fetched knowledge stats', { totalItems: stats.total } as any);
+      
+      return reply.send({
+        ok: true,
+        data: stats,
+      });
+    } catch (error) {
+      logger.error('Failed to get knowledge stats', { error } as any);
+      
+      return reply.code(500).send({
+        ok: false,
+        code: 'INTERNAL_ERROR',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
   // 创建知识库条目
   fastify.post('/knowledge', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -90,6 +211,8 @@ export async function knowledgeRoutes(fastify: FastifyInstance) {
       
       const knowledgeItems = await KnowledgeService.getKnowledgeList(filters);
       
+      logger.info('Fetched knowledge list', { count: knowledgeItems.length, filters } as any);
+      
       return reply.send({
         ok: true,
         data: knowledgeItems,
@@ -121,6 +244,8 @@ export async function knowledgeRoutes(fastify: FastifyInstance) {
           message: 'Knowledge item not found',
         });
       }
+      
+      logger.info('Fetched knowledge item', { knowledgeId: id } as any);
       
       return reply.send({
         ok: true,
@@ -211,101 +336,6 @@ export async function knowledgeRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // 搜索知识库
-  fastify.post('/knowledge/search', async (request: FastifyRequest, reply: FastifyReply) => {
-    try {
-      const body = z.object({
-        query: z.string().min(1),
-        category: z.string().optional(),
-        limit: z.number().int().min(1).max(50).optional(),
-        minScore: z.number().min(0).max(1).optional(),
-      }).parse(request.body);
-      
-      const results = await KnowledgeService.searchKnowledge(
-        body.query, 
-        { 
-          category: body.category, 
-          limit: body.limit,
-          minScore: body.minScore
-        }
-      );
-      
-      return reply.send({
-        ok: true,
-        data: results,
-        meta: {
-          query: body.query,
-          count: results.length,
-        },
-      });
-    } catch (error) {
-      logger.error('Failed to search knowledge', { error } as any);
-      
-      return reply.code(500).send({
-        ok: false,
-        code: 'INTERNAL_ERROR',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
-    }
-  });
-
-  // 获取最佳答案
-  fastify.post('/knowledge/best-answer', async (request: FastifyRequest, reply: FastifyReply) => {
-    try {
-      const body = z.object({
-        question: z.string().min(1),
-      }).parse(request.body);
-      
-      const answer = await KnowledgeService.findBestAnswer(body.question);
-      
-      if (answer) {
-        // 增加使用计数
-        await KnowledgeService.incrementUsage(answer.id);
-      }
-      
-      return reply.send({
-        ok: true,
-        data: answer,
-        meta: {
-          question: body.question,
-          found: !!answer,
-        },
-      });
-    } catch (error) {
-      logger.error('Failed to find best answer', { error } as any);
-      
-      return reply.code(500).send({
-        ok: false,
-        code: 'INTERNAL_ERROR',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
-    }
-  });
-
-  // 获取热门知识库条目
-  fastify.get('/knowledge/popular', async (request: FastifyRequest, reply: FastifyReply) => {
-    try {
-      const query = z.object({
-        limit: z.string().transform(val => parseInt(val, 10)).optional(),
-      }).parse(request.query);
-      
-      const items = await KnowledgeService.getPopularItems(query.limit);
-      
-      return reply.send({
-        ok: true,
-        data: items,
-      });
-    } catch (error) {
-      logger.error('Failed to get popular knowledge items', { error } as any);
-      
-      return reply.code(500).send({
-        ok: false,
-        code: 'INTERNAL_ERROR',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
-    }
-  });
-
   // 增加使用计数
   fastify.post('/knowledge/:id/use', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -321,26 +351,6 @@ export async function knowledgeRoutes(fastify: FastifyInstance) {
       });
     } catch (error) {
       logger.error('Failed to increment usage', { error } as any);
-      
-      return reply.code(500).send({
-        ok: false,
-        code: 'INTERNAL_ERROR',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
-    }
-  });
-
-  // 获取知识库统计
-  fastify.get('/knowledge/stats', async (request: FastifyRequest, reply: FastifyReply) => {
-    try {
-      const stats = await KnowledgeService.getKnowledgeStats();
-      
-      return reply.send({
-        ok: true,
-        data: stats,
-      });
-    } catch (error) {
-      logger.error('Failed to get knowledge stats', { error } as any);
       
       return reply.code(500).send({
         ok: false,

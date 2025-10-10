@@ -42,8 +42,9 @@ export interface ContactSummary {
   id: string;
   phoneE164: string;
   name: string | null;
-  cooldownUntil: string | null;
-  cooldownRemainingSeconds: number | null;
+  avatarUrl?: string | null;
+  cooldownUntil?: string | null;
+  cooldownRemainingSeconds?: number | null;
 }
 
 export interface ThreadBase {
@@ -60,6 +61,12 @@ export interface ThreadListItem extends ThreadBase {
   contact: ContactSummary;
   messagesCount: number;
   latestMessageAt: string | null;
+  lastMessage?: {
+    id: string;
+    body: string | null;
+    fromMe: boolean;
+    createdAt: string;
+  } | null;
 }
 
 export interface ThreadWithMessages extends ThreadBase {

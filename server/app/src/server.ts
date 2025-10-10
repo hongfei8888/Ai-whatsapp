@@ -2,6 +2,14 @@ import Fastify, { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { z, ZodError } from 'zod';
 import { appConfig, isAuthEnabled } from './config';
 import { logger } from './logger';
+import type { WhatsAppService } from './whatsapp-service';
+
+// 扩展 Fastify 类型以包含 whatsappService
+declare module 'fastify' {
+  interface FastifyInstance {
+    whatsappService: WhatsAppService;
+  }
+}
 import { webSocketService } from './websocket-service';
 import {
   AuthenticationError,
@@ -17,6 +25,7 @@ import {
   createContact,
   deleteContact,
   getContactById,
+  getContactByPhone,
   listContacts,
 } from './services/contact-service';
 import { sendOutreach } from './services/outreach-service';
@@ -61,9 +70,19 @@ import { generatePreviewReply } from './ai/pipeline';
 import { templateRoutes, categoryRoutes } from './routes/templates';
 import { batchRoutes } from './routes/batch';
 import { knowledgeRoutes, knowledgeCategoryRoutes } from './routes/knowledge';
+import { translationRoutes } from './routes/translation';
+import { statsRoutes } from './routes/stats';
+import { dataManagementRoutes } from './routes/data-management';
+import mediaRoutes from './routes/media';
+import { messageRoutes } from './routes/messages';
+import { threadRoutes } from './routes/threads';
+import { 
+  getSystemSettings, 
+  updateSystemSettings 
+} from './services/system-settings-service';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { recordMessage } from './services/message-service';
+import { recordMessage, recordMessageIfMissing } from './services/message-service';
 import { getOrCreateThread } from './services/thread-service';
 import { MessageDirection, MessageStatus } from '@prisma/client';
 
@@ -228,11 +247,13 @@ const serializeContactSummary = (
     id: string;
     phoneE164: string;
     name: string | null;
+    avatarUrl?: string | null;
   },
 ) => ({
   id: contact.id,
   phoneE164: contact.phoneE164,
   name: contact.name,
+  avatarUrl: contact.avatarUrl,
 });
 
 const serializeThreadListItem = (
@@ -249,6 +270,12 @@ const serializeThreadListItem = (
   messagesCount: thread.messagesCount,
   latestMessageAt: thread.latestMessageAt ? thread.latestMessageAt.toISOString() : null,
   contact: serializeContactSummary(thread.contact),
+  lastMessage: thread.lastMessage ? {
+    id: thread.lastMessage.id,
+    body: thread.lastMessage.text,
+    fromMe: thread.lastMessage.direction === 'OUT',
+    createdAt: thread.lastMessage.createdAt.toISOString(),
+  } : null,
 });
 
 const serializeThreadWithMessages = (
@@ -267,7 +294,9 @@ const serializeThreadWithMessages = (
     id: message.id,
     threadId: message.threadId,
     direction: message.direction,
-    text: message.text,
+    body: message.text, // 映射 text 为 body
+    fromMe: message.direction === 'OUT', // 映射 direction 为 fromMe
+    text: message.text, // 保留 text 字段以兼容
     status: message.status,
     externalId: message.externalId,
     createdAt: message.createdAt.toISOString(),
@@ -279,16 +308,20 @@ export async function buildServer(): Promise<FastifyInstance> {
     logger: true,
   });
 
+  // 挂载全局 WhatsApp 服务实例到 Fastify（确保与 websocket-service 监听的是同一个实例）
+  app.decorate('whatsappService', whatsappService);
+
   // Register CORS plugin
   await app.register(require('@fastify/cors'), {
     origin: ['http://localhost:3000', 'http://localhost:3001'], // Allow frontend origins
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'], // 允许所有常用 HTTP 方法
   });
 
   // Register multipart plugin for file uploads
   await app.register(require('@fastify/multipart'), {
     limits: {
-      fileSize: 10 * 1024 * 1024, // 10MB limit
+      fileSize: 100 * 1024 * 1024, // 100MB limit (for videos)
     },
   });
 
@@ -529,11 +562,111 @@ export async function buildServer(): Promise<FastifyInstance> {
     });
   });
 
-  app.get<{ Params: { id: string }; Querystring: { limit?: number } }>('/threads/:id/messages', async (request, reply) => {
+  // 注意：/threads/:id/messages 路由已移至 routes/threads.ts
+
+  // 发送消息
+  app.post('/messages/send', async (request, reply) => {
+    try {
+      const body = z.object({
+        phoneE164: z.string(),
+        content: z.string(),
+      }).parse(request.body);
+
+      logger.info({ phoneE164: body.phoneE164, contentLength: body.content.length }, 'Sending message via API');
+
+      // 查找或创建联系人
+      let contact = await getContactByPhone(body.phoneE164);
+      if (!contact) {
+        logger.info({ phoneE164: body.phoneE164 }, 'Contact not found, creating new contact');
+        contact = await createContact({ phoneE164: body.phoneE164 });
+      }
+
+      // 获取或创建对话线程
+      const thread = await getOrCreateThread(contact.id);
+      logger.info({ threadId: thread.id, contactId: contact.id }, 'Thread obtained');
+
+      // 发送 WhatsApp 消息
+      const response = await whatsappService.sendTextMessage(body.phoneE164, body.content);
+      logger.info({ responseId: response.id }, 'WhatsApp message sent');
+
+      // 记录消息到数据库（如果已存在则跳过）
+      let message = await recordMessageIfMissing({
+        threadId: thread.id,
+        externalId: response.id ?? null,
+        direction: 'OUT' as MessageDirection,
+        text: body.content,
+        status: response.id ? 'SENT' as MessageStatus : 'FAILED' as MessageStatus,
+      });
+
+      // 如果消息已通过 WebSocket 保存，从数据库查找
+      if (!message && response.id) {
+        logger.info({ externalId: response.id }, 'Message already exists, fetching from database');
+        message = await prisma.message.findUnique({
+          where: { externalId: response.id },
+        });
+      }
+
+      if (!message) {
+        throw new Error('Failed to create or find message in database');
+      }
+
+      logger.info({ messageId: message.id }, 'Message recorded to database');
+
+      return sendOk(reply, 200, {
+        message: {
+          id: message.id,
+          threadId: message.threadId,
+          direction: message.direction,
+          body: message.text,
+          fromMe: true,
+          text: message.text,
+          status: message.status,
+          externalId: message.externalId,
+          createdAt: message.createdAt.toISOString(),
+        },
+      });
+    } catch (error) {
+      logger.error({ 
+        error: error instanceof Error ? {
+          name: error.name,
+          message: error.message,
+          stack: error.stack
+        } : error
+      }, 'Failed to send message via API');
+      
+      return sendError(reply, 500, { 
+        code: 'SEND_MESSAGE_FAILED', 
+        message: error instanceof Error ? error.message : 'Failed to send message' 
+      });
+    }
+  });
+
+  // 获取或创建联系人的对话线程
+  app.post('/contacts/:id/thread', async (request, reply) => {
     const params = contactIdSchema.parse(request.params);
-    const query = messagesQuerySchema.parse(request.query);
-    const thread = await getThreadWithMessages(params.id, query.limit ?? 50);
-    return sendOk(reply, 200, serializeThreadWithMessages(thread));
+    
+    try {
+      // 获取或创建线程
+      const thread = await getOrCreateThread(params.id);
+      const threadSummary = await getThreadSummary(thread.id);
+      
+      return sendOk(reply, 200, { 
+        thread: serializeThreadListItem(threadSummary) 
+      });
+    } catch (error) {
+      logger.error({ 
+        error: error instanceof Error ? {
+          name: error.name,
+          message: error.message,
+          stack: error.stack
+        } : error
+      }, 'Failed to get or create thread');
+      
+      return sendError(reply, 500, { 
+        code: 'THREAD_CREATE_FAILED', 
+        message: error instanceof Error ? error.message : 'Failed to get or create thread' 
+      });
+    }
   });
 
   app.post('/threads/:id/takeover', async (request, reply) => {
@@ -661,33 +794,29 @@ export async function buildServer(): Promise<FastifyInstance> {
     return sendOk(reply, 200, view);
   });
 
-  // 更新系统设置
-  app.put('/settings', async (request, reply) => {
-    try {
-      const body = settingsSchema.parse(request.body);
-      // TODO: 保存到数据库或配置文件
-      logger.info({ settings: body }, 'Settings updated');
-      return sendOk(reply, 200, { message: 'Settings updated successfully', settings: body });
-    } catch (error) {
-      logger.error({ error }, 'Failed to update settings');
-      return sendError(reply, 500, { code: 'SETTINGS_UPDATE_ERROR', message: 'Failed to update settings' });
-    }
-  });
-
   // 获取系统设置
   app.get('/settings', async (_request, reply) => {
     try {
-      const settings = {
-        globalAiEnabled: true, // 可以从数据库或配置中获取
-        welcomeTemplate: appConfig.welcomeTemplate || '您好！我是AI助手，很高兴为您服务。',
-        apiUrl: process.env.API_BASE_URL || 'http://localhost:4000',
-        theme: 'light',
-        language: 'zh-CN'
-      };
+      const settings = await getSystemSettings();
       return sendOk(reply, 200, settings);
     } catch (error) {
       logger.error({ error }, 'Failed to get settings');
-      return sendError(reply, 500, { code: 'SETTINGS_GET_FAILED', message: 'Failed to get settings' });
+      return sendError(reply, 500, { code: 'SETTINGS_ERROR', message: 'Failed to get settings' });
+    }
+  });
+
+  // 更新系统设置
+  app.put('/settings', async (request, reply) => {
+    try {
+      const updates = request.body as any;
+      const settings = await updateSystemSettings(updates);
+      return sendOk(reply, 200, settings);
+    } catch (error) {
+      logger.error({ error }, 'Failed to update settings');
+      return sendError(reply, 500, { 
+        code: 'SETTINGS_ERROR', 
+        message: error instanceof Error ? error.message : 'Failed to update settings' 
+      });
     }
   });
 
@@ -702,6 +831,24 @@ export async function buildServer(): Promise<FastifyInstance> {
   // 注册知识库路由
   await app.register(knowledgeRoutes);
   await app.register(knowledgeCategoryRoutes);
+  
+  // 注册翻译路由
+  await app.register(translationRoutes);
+  
+  // 注册统计路由
+  await app.register(statsRoutes);
+  
+  // 注册数据管理路由
+  await app.register(dataManagementRoutes);
+  
+  // 注册媒体文件路由
+  await app.register(mediaRoutes);
+  
+  // 注册消息操作路由
+  await app.register(messageRoutes);
+  
+  // 注册会话管理路由
+  await app.register(threadRoutes);
 
   if (!isAuthEnabled) {
     logger.warn('AUTH_TOKEN is not configured. Authentication is disabled.');

@@ -60,6 +60,83 @@ export async function templateRoutes(fastify: FastifyInstance) {
     }
   });
 
+  // 获取热门模板（必须在 :id 之前）
+  fastify.get('/templates/popular', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const query = z.object({
+        limit: z.string().transform(val => parseInt(val, 10)).optional(),
+      }).parse(request.query);
+      
+      const templates = await EnhancedTemplateService.getPopularTemplates(query.limit);
+      
+      return reply.send({
+        ok: true,
+        data: templates,
+      });
+    } catch (error) {
+      logger.error('Failed to get popular templates', { error } as any);
+      
+      return reply.code(500).send({
+        ok: false,
+        code: 'INTERNAL_ERROR',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  // 获取模板统计（必须在 :id 之前）
+  fastify.get('/templates/stats', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const stats = await EnhancedTemplateService.getTemplateStats();
+      
+      return reply.send({
+        ok: true,
+        data: stats,
+      });
+    } catch (error) {
+      logger.error('Failed to get template stats', { error } as any);
+      
+      return reply.code(500).send({
+        ok: false,
+        code: 'INTERNAL_ERROR',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  // 搜索模板（必须在 :id 之前）
+  fastify.post('/templates/search', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const body = z.object({
+        query: z.string().min(1),
+        category: z.string().optional(),
+        limit: z.number().int().min(1).max(50).optional(),
+      }).parse(request.body);
+      
+      const templates = await EnhancedTemplateService.searchTemplates(
+        body.query, 
+        { category: body.category, limit: body.limit }
+      );
+      
+      return reply.send({
+        ok: true,
+        data: templates,
+        meta: {
+          query: body.query,
+          count: templates.length,
+        },
+      });
+    } catch (error) {
+      logger.error('Failed to search templates', { error } as any);
+      
+      return reply.code(500).send({
+        ok: false,
+        code: 'INTERNAL_ERROR',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
   // 获取模板列表
   fastify.get('/templates', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -89,6 +166,8 @@ export async function templateRoutes(fastify: FastifyInstance) {
       };
       
       const templates = await EnhancedTemplateService.getTemplates(filters);
+      
+      logger.info('Templates fetched', { count: templates.length } as any);
       
       return reply.send({
         ok: true,
@@ -263,83 +342,6 @@ export async function templateRoutes(fastify: FastifyInstance) {
           message: 'Template not found',
         });
       }
-      
-      return reply.code(500).send({
-        ok: false,
-        code: 'INTERNAL_ERROR',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
-    }
-  });
-
-  // 搜索模板
-  fastify.post('/templates/search', async (request: FastifyRequest, reply: FastifyReply) => {
-    try {
-      const body = z.object({
-        query: z.string().min(1),
-        category: z.string().optional(),
-        limit: z.number().int().min(1).max(50).optional(),
-      }).parse(request.body);
-      
-      const templates = await EnhancedTemplateService.searchTemplates(
-        body.query, 
-        { category: body.category, limit: body.limit }
-      );
-      
-      return reply.send({
-        ok: true,
-        data: templates,
-        meta: {
-          query: body.query,
-          count: templates.length,
-        },
-      });
-    } catch (error) {
-      logger.error('Failed to search templates', { error } as any);
-      
-      return reply.code(500).send({
-        ok: false,
-        code: 'INTERNAL_ERROR',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
-    }
-  });
-
-  // 获取热门模板
-  fastify.get('/templates/popular', async (request: FastifyRequest, reply: FastifyReply) => {
-    try {
-      const query = z.object({
-        limit: z.string().transform(val => parseInt(val, 10)).optional(),
-      }).parse(request.query);
-      
-      const templates = await EnhancedTemplateService.getPopularTemplates(query.limit);
-      
-      return reply.send({
-        ok: true,
-        data: templates,
-      });
-    } catch (error) {
-      logger.error('Failed to get popular templates', { error } as any);
-      
-      return reply.code(500).send({
-        ok: false,
-        code: 'INTERNAL_ERROR',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
-    }
-  });
-
-  // 获取模板统计
-  fastify.get('/templates/stats', async (request: FastifyRequest, reply: FastifyReply) => {
-    try {
-      const stats = await EnhancedTemplateService.getTemplateStats();
-      
-      return reply.send({
-        ok: true,
-        data: stats,
-      });
-    } catch (error) {
-      logger.error('Failed to get template stats', { error } as any);
       
       return reply.code(500).send({
         ok: false,

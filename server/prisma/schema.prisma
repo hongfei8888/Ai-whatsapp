@@ -42,6 +42,7 @@ model Contact {
   source         String?   // 导入来源
   importBatchId  String?   // 批量导入批次ID
   notes          String?   // 备注信息
+  avatarUrl      String?   // 头像URL
 
   id             String    @id @default(cuid())
   phoneE164      String    @unique
@@ -56,6 +57,7 @@ model Thread {
   id           String    @id @default(cuid())
   contactId    String    @unique
   aiEnabled    Boolean   @default(false)
+  autoTranslate Boolean  @default(false) // 是否启用自动翻译
   takenOver    Boolean   @default(false)
   takenOverAt  DateTime?
   lastHumanAt  DateTime?
@@ -64,6 +66,31 @@ model Thread {
   updatedAt    DateTime  @updatedAt
   contact      Contact   @relation(fields: [contactId], references: [id])
   messages     Message[]
+
+  // 会话置顶
+  isPinned     Boolean   @default(false)
+  pinnedAt     DateTime?
+
+  // 会话归档
+  isArchived   Boolean   @default(false)
+  archivedAt   DateTime?
+
+  // 会话标签
+  labels       Json?     // ["销售", "客服", "VIP"]
+
+  // 未读消息
+  unreadCount  Int       @default(0)
+  lastReadAt   DateTime?
+
+  // 草稿
+  draft        String?   // 未发送的草稿内容
+  draftUpdatedAt DateTime?
+
+  // 会话备注
+  notes        String?
+
+  @@index([isPinned, updatedAt])
+  @@index([isArchived])
 }
 
 model Message {
@@ -72,11 +99,49 @@ model Message {
   externalId  String?          @unique
   direction   MessageDirection
   text        String?
+  translatedText String?       // 翻译后的文本
   status      MessageStatus    @default(SENT)
   createdAt   DateTime         @default(now())
   thread      Thread           @relation(fields: [threadId], references: [id])
 
+  // 媒体文件支持
+  mediaUrl      String?        // 媒体文件URL
+  mediaType     String?        // 类型: image, document, audio, video
+  mediaMimeType String?        // MIME类型
+  mediaSize     Int?           // 文件大小(字节)
+  mediaFileName String?        // 原始文件名
+  thumbnailUrl  String?        // 缩略图URL(用于图片/视频)
+  duration      Int?           // 音视频时长(秒)
+
+  // 消息引用
+  replyToId     String?        // 引用的消息ID
+  replyTo       Message?       @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies       Message[]      @relation("MessageReplies")
+
+  // 消息编辑
+  isEdited      Boolean        @default(false)
+  editedAt      DateTime?
+  originalText  String?        // 编辑前的原文
+
+  // 消息删除
+  isDeleted     Boolean        @default(false)
+  deletedAt     DateTime?
+  deletedBy     String?        // 删除者(对方/自己)
+
+  // 消息转发
+  isForwarded   Boolean        @default(false)
+  forwardedFrom String?        // 原始发送者信息
+
+  // 消息标记
+  isStarred     Boolean        @default(false)
+  starredAt     DateTime?
+
+  // 消息状态扩展
+  deliveredAt   DateTime?      // 送达时间
+  readAt        DateTime?      // 已读时间
+
   @@index([threadId, createdAt])
+  @@index([replyToId])
 }
 
 model AiConfig {
@@ -230,4 +295,21 @@ model FAQCategory {
   sortOrder   Int       @default(0)
   isActive    Boolean   @default(true)
   createdAt   DateTime  @default(now())
+}
+
+// 翻译缓存表
+model Translation {
+  id             String   @id @default(cuid())
+  originalText   String   // 原文
+  translatedText String   // 译文
+  sourceLang     String   // 源语言（auto-detect）
+  targetLang     String   // 目标语言（zh）
+  textHash       String   @unique // MD5 hash for caching
+  provider       String   @default("baidu") // 翻译服务提供商
+  usageCount     Int      @default(1) // 使用次数
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([textHash])
+  @@map("translations")
 }

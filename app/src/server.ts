@@ -248,6 +248,12 @@ const serializeThreadListItem = (
   messagesCount: thread.messagesCount,
   latestMessageAt: thread.latestMessageAt ? thread.latestMessageAt.toISOString() : null,
   contact: serializeContactSummary(thread.contact),
+  lastMessage: thread.lastMessage ? {
+    id: thread.lastMessage.id,
+    body: thread.lastMessage.text,
+    fromMe: thread.lastMessage.direction === 'OUT',
+    createdAt: thread.lastMessage.createdAt.toISOString(),
+  } : null,
 });
 
 const serializeThreadWithMessages = (

@@ -1,0 +1,49 @@
+
+> web@1.0.0 dev
+> next dev
+
+ ⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of D:\projects\whatsapp-web.js-main 2025.9.29 自动回复养号\package-lock.json as the root directory.
+ To silence this warning, set `outputFileTracingRoot` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/output#caveats for more information.
+ Detected additional lockfiles: 
+   * D:\projects\whatsapp-web.js-main 2025.9.29 自动回复养号\web\package-lock.json
+
+   ▲ Next.js 15.5.4
+   - Local:        http://localhost:3000
+   - Network:      http://198.18.0.1:3000
+   - Environments: .env.local
+
+ ✓ Starting...
+node:events:502
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: EPERM: operation not permitted, open 'D:\projects\whatsapp-web.js-main 2025.9.29 自动回复养号\web\.next\trace'
+Emitted 'error' event on WriteStream instance at:
+    at emitErrorNT (node:internal/streams/destroy:169:8)
+    at emitErrorCloseNT (node:internal/streams/destroy:128:3)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
+  errno: -4048,
+  code: 'EPERM',
+  syscall: 'open',
+  path: 'D:\\projects\\whatsapp-web.js-main 2025.9.29 自动回复养号\\web\\.next\\trace'
+}
+
+Node.js v20.19.2
+node:events:502
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: EPERM: operation not permitted, open 'D:\projects\whatsapp-web.js-main 2025.9.29 自动回复养号\web\.next\trace'
+Emitted 'error' event on WriteStream instance at:
+    at emitErrorNT (node:internal/streams/destroy:169:8)
+    at emitErrorCloseNT (node:internal/streams/destroy:128:3)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
+  errno: -4048,
+  code: 'EPERM',
+  syscall: 'open',
+  path: 'D:\\projects\\whatsapp-web.js-main 2025.9.29 自动回复养号\\web\\.next\\trace'
+}
+
+Node.js v20.19.2

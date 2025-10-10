@@ -383,7 +383,9 @@ export class BatchService {
       throw new Error('Batch operation not found');
     }
 
-    if (batch.status === 'completed' || batch.status === 'cancelled') {
+    // 支持大小写不敏感的状态检查
+    const statusLower = batch.status.toLowerCase();
+    if (statusLower === 'completed' || statusLower === 'cancelled') {
       throw new Error('Cannot cancel completed or cancelled batch operation');
     }
 

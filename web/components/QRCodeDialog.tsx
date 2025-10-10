@@ -61,17 +61,28 @@ export default function QRCodeDialog({ isOpen, onClose, onSuccess }: QRCodeDialo
         try {
           const dataUrl = await QRCode.toDataURL(result.qr, { margin: 1, width: 240 });
           setQrImage(dataUrl);
+          setStatus('请使用手机 WhatsApp 扫描二维码');
         } catch (encodeError) {
           console.error('Failed to encode QR string', encodeError);
           setQrImage(null);
+          setStatus('二维码生成失败');
         }
       } else {
         setQrImage(null);
+        // 如果没有二维码，尝试启动登录流程
+        if (!result.qr && result.status?.toUpperCase() !== 'READY') {
+          setStatus('正在初始化 WhatsApp 客户端...');
+        }
       }
 
       if (result.status?.toUpperCase() === 'READY') {
-        onSuccess?.();
-        onClose();
+        setStatus('✅ 登录成功！正在刷新页面...');
+        setTimeout(() => {
+          onSuccess?.();
+          onClose();
+          // 刷新页面以更新状态
+          window.location.reload();
+        }, 1500);
       }
     } catch (error) {
       console.error('Failed to fetch QR code', error);
@@ -88,12 +99,35 @@ export default function QRCodeDialog({ isOpen, onClose, onSuccess }: QRCodeDialo
       return;
     }
 
-    void fetchQRCode();
-    const interval = setInterval(() => {
-      void fetchQRCode();
-    }, 4000);
+    let interval: NodeJS.Timeout | null = null;
+    let isActive = true;
 
-    return () => clearInterval(interval);
+    const pollQRCode = async () => {
+      if (!isActive) return;
+      
+      try {
+        await fetchQRCode();
+        // 继续轮询（除非组件已卸载或对话框关闭）
+        if (isActive && isOpen) {
+          interval = setTimeout(pollQRCode, 4000);
+        }
+      } catch (error) {
+        console.error('QR polling error:', error);
+        // 出错后也继续轮询，但间隔更长
+        if (isActive && isOpen) {
+          interval = setTimeout(pollQRCode, 8000);
+        }
+      }
+    };
+
+    void pollQRCode();
+
+    return () => {
+      isActive = false;
+      if (interval) {
+        clearTimeout(interval);
+      }
+    };
   }, [fetchQRCode, isOpen]);
 
   if (!isOpen) {

@@ -1,3 +1,4 @@
+
 import { EventEmitter } from 'events';
 import { Client, LocalAuth, Message } from 'whatsapp-web.js';
 import * as fs from 'fs/promises';
@@ -272,12 +273,20 @@ export class WhatsAppService extends EventEmitter {
       this.lastQr = qr;
     }
 
+    // 计算 online 和 sessionReady 字段（与 /status 接口保持一致）
+    const onlineStates = new Set(['READY', 'AUTHENTICATING']);
+    const online = onlineStates.has(newStatus);
+    const sessionReady = newStatus === 'READY';
+
     // 发射状态变化事件
     this.emit('statusChanged', {
       status: newStatus,
       state: newState,
       qr: this.lastQr,
       phoneE164: this.phoneE164,
+      online,
+      sessionReady,
+      lastOnline: this.lastOnline?.toISOString() ?? null,
       timestamp: Date.now()
     });
 
@@ -321,17 +330,19 @@ export class WhatsAppService extends EventEmitter {
     });
 
     this.client.on('authenticated', () => {
-      this.status = 'AUTHENTICATING';
-      this.state = 'CONNECTING';
       this.lastQr = null;
       this.lastQrBase64 = null;
       logger.info('WhatsApp authenticated');
+      
+      // 使用统一的状态更新方法
+      this.updateStatus('AUTHENTICATING', 'CONNECTING');
     });
 
     this.client.on('auth_failure', (err: any) => {
-      this.status = 'FAILED';
-      this.state = 'OFFLINE';
       logger.error({ err }, 'WhatsApp authentication failed');
+      
+      // 使用统一的状态更新方法
+      this.updateStatus('FAILED', 'OFFLINE');
     });
 
     this.client.on('ready', async () => {
@@ -359,7 +370,7 @@ export class WhatsAppService extends EventEmitter {
       this.lastQr = null;
       this.lastQrBase64 = null;
       logger.warn({ reason }, 'WhatsApp disconnected');
-      this.emit('disconnected', reason);
+      this.emit('disconnected');
       
       // 使用统一的状态更新方法
       this.updateStatus('DISCONNECTED', 'OFFLINE');
@@ -409,6 +420,11 @@ export class WhatsAppService extends EventEmitter {
         }, 'WhatsApp message event received');
         
         // 发射WebSocket事件 - 新消息
+        // threadId 逻辑：
+        // - 接收消息(fromMe=false): threadId = message.from (对方号码)
+        // - 发送消息(fromMe=true): threadId = message.to (对方号码)
+        const threadId = message.fromMe ? message.to : message.from;
+        
         this.emit('newMessage', {
           id: message.id._serialized,
           from: message.from,
@@ -417,7 +433,7 @@ export class WhatsAppService extends EventEmitter {
           fromMe: message.fromMe,
           type: message.type,
           timestamp: message.timestamp,
-          threadId: message.from // 使用from作为threadId，实际项目中可能需要更复杂的逻辑
+          threadId: threadId
         });
         
         if (message.fromMe) {
@@ -778,6 +794,27 @@ export class WhatsAppService extends EventEmitter {
         }, 'Cannot trigger outgoing handler manually');
       }
       
+      // 手动触发 WebSocket newMessage 事件（用于 AI 回复）
+      if (response.id) {
+        const threadId = chatId; // 对于发送的消息，threadId 就是接收方的 chatId
+        logger.info({ 
+          responseId: response.id._serialized,
+          threadId,
+          content 
+        }, 'Manually emitting newMessage event for sent message');
+        
+        this.emit('newMessage', {
+          id: response.id._serialized,
+          from: this.phoneE164 ? `${this.phoneE164.replace('+', '')}@c.us` : 'unknown',
+          to: chatId,
+          body: content,
+          fromMe: true,
+          type: 'chat',
+          timestamp: Math.floor(Date.now() / 1000),
+          threadId: threadId
+        });
+      }
+      
       return { id: response.id ? response.id._serialized : undefined };
     };
 
@@ -1013,6 +1050,7 @@ export class WhatsAppService extends EventEmitter {
           const contactData = {
             phoneE164: whatsappContact.number,
             name: whatsappContact.name || null,
+            avatarUrl: whatsappContact.profilePicUrl || null,
             consent: true, // WhatsApp联系人默认同意接收消息
             source: 'whatsapp_sync' as any,
             tags: whatsappContact.isWAContact ? ['whatsapp_contact'] : ['whatsapp_user'] as any,
@@ -1024,6 +1062,7 @@ export class WhatsAppService extends EventEmitter {
               where: { phoneE164: whatsappContact.number },
               data: {
                 name: whatsappContact.name || existingContact.name,
+                avatarUrl: whatsappContact.profilePicUrl || existingContact.avatarUrl,
                 source: 'whatsapp_sync' as any,
                 tags: whatsappContact.isWAContact ? ['whatsapp_contact'] : ['whatsapp_user'] as any,
               }
@@ -1057,6 +1096,102 @@ export class WhatsAppService extends EventEmitter {
       logger.error({ error }, 'Failed to sync WhatsApp contacts to database');
       throw error;
     }
+  }
+
+  // ============================================
+  // 新增：WebSocket 事件触发方法
+  // ============================================
+
+  /**
+   * 触发消息编辑事件
+   */
+  emitMessageEdited(messageId: string, threadId: string, text: string) {
+    this.emit('message_edited', {
+      messageId,
+      threadId,
+      text,
+      editedAt: new Date().toISOString(),
+    });
+    
+    logger.info({ messageId, threadId }, 'Message edited event emitted');
+  }
+
+  /**
+   * 触发消息删除事件
+   */
+  emitMessageDeleted(messageId: string, threadId: string, deletedBy: string) {
+    this.emit('message_deleted', {
+      messageId,
+      threadId,
+      deletedAt: new Date().toISOString(),
+      deletedBy,
+    });
+    
+    logger.info({ messageId, threadId }, 'Message deleted event emitted');
+  }
+
+  /**
+   * 触发消息星标事件
+   */
+  emitMessageStarred(messageId: string, threadId: string, isStarred: boolean) {
+    this.emit('message_starred', {
+      messageId,
+      threadId,
+      isStarred,
+      starredAt: isStarred ? new Date().toISOString() : null,
+    });
+    
+    logger.info({ messageId, threadId, isStarred }, 'Message starred event emitted');
+  }
+
+  /**
+   * 触发会话置顶事件
+   */
+  emitThreadPinned(threadId: string, isPinned: boolean) {
+    this.emit('thread_pinned', {
+      threadId,
+      isPinned,
+      pinnedAt: isPinned ? new Date().toISOString() : null,
+    });
+    
+    logger.info({ threadId, isPinned }, 'Thread pinned event emitted');
+  }
+
+  /**
+   * 触发会话归档事件
+   */
+  emitThreadArchived(threadId: string, isArchived: boolean) {
+    this.emit('thread_archived', {
+      threadId,
+      isArchived,
+      archivedAt: isArchived ? new Date().toISOString() : null,
+    });
+    
+    logger.info({ threadId, isArchived }, 'Thread archived event emitted');
+  }
+
+  /**
+   * 触发消息已读事件
+   */
+  emitMessageRead(messageId: string, threadId: string) {
+    this.emit('message_read', {
+      messageId,
+      threadId,
+      readAt: new Date().toISOString(),
+    });
+    
+    logger.info({ messageId, threadId }, 'Message read event emitted');
+  }
+
+  /**
+   * 触发正在输入事件
+   */
+  emitTyping(threadId: string, contactId: string, isTyping: boolean) {
+    this.emit('typing', {
+      threadId,
+      contactId,
+      isTyping,
+    });
   }
 }
 

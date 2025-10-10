@@ -1,7 +1,7 @@
 ﻿/** @type {import('next').NextConfig} */
 const nextConfig = {
-  // 静态导出配置
-  output: 'export',
+  // 注释掉静态导出配置以支持动态路由
+  // output: 'export',
   trailingSlash: true,
   
   reactStrictMode: true,

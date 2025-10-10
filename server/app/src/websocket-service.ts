@@ -88,11 +88,13 @@ export class WebSocketService extends EventEmitter {
 
     // 新消息事件
     whatsappService.on('newMessage', (message) => {
+      logger.info({ message }, '📤 [WebSocket] 收到 newMessage 事件，准备广播');
       this.broadcast({
         type: 'new_message',
         data: message,
         timestamp: Date.now()
       });
+      logger.info({ connections: this.connections.size }, '📤 [WebSocket] 已广播到所有连接');
     });
 
     // 消息状态更新事件

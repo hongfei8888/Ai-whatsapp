@@ -87,12 +87,20 @@ async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 export const api = {
   getStatus: () => apiFetch<StatusPayload>('/status'),
-  getContacts: () => apiFetch<{ contacts: Contact[] }>('/contacts'),
+  getContacts: () => apiFetch<any>('/contacts'),
+  getContact: (id: string) => apiFetch<Contact>(`/contacts/${id}`),
   createContact: (payload: { phoneE164: string; name?: string }) =>
     apiFetch<Contact>('/contacts', {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
+  updateContact: (id: string, payload: { name?: string; tags?: string[] }) =>
+    apiFetch<Contact>(`/contacts/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
+  getContactStats: (id: string) =>
+    apiFetch<{ messageCount: number; lastContactAt: string | null; threadCount: number }>(`/contacts/${id}/stats`),
   sendOutreach: (id: string, payload: { content: string }) =>
     apiFetch<{ threadId: string; message: Message }>(`/contacts/${id}/outreach`, {
       method: 'POST',
@@ -106,6 +114,10 @@ export const api = {
       body: formData,
     });
   },
+  getOrCreateThread: (contactId: string) =>
+    apiFetch<{ thread: ThreadListItem }>(`/contacts/${contactId}/thread`, {
+      method: 'POST',
+    }),
   getAiConfig: () => apiFetch<AiConfig>('/ai/config'),
   updateAiConfig: (payload: { systemPrompt: string; maxTokens: number; temperature: number; minChars: number; stylePreset: 'concise-cn' | 'sales-cn' | 'support-cn' }) =>
     apiFetch<AiConfig>('/ai/config', {
@@ -120,6 +132,23 @@ export const api = {
   getThreads: () => apiFetch<{ threads: ThreadListItem[] }>('/threads'),
   getThreadMessages: (id: string, limit = 50) =>
     apiFetch<ThreadWithMessages>(`/threads/${id}/messages?limit=${limit}`),
+  getThreadMessagesMore: (id: string, options: { limit?: number; before?: string; after?: string }) => {
+    const params = new URLSearchParams();
+    if (options.limit) params.append('limit', options.limit.toString());
+    if (options.before) params.append('before', options.before);
+    if (options.after) params.append('after', options.after);
+    return apiFetch<{ messages: any[]; hasMore: boolean }>(`/threads/${id}/messages/more?${params.toString()}`);
+  },
+  sendMessage: (phoneE164: string, content: string) =>
+    apiFetch<{ message: Message }>('/messages/send', {
+      method: 'POST',
+      body: JSON.stringify({ phoneE164, content }),
+    }),
+  sendMediaMessage: (phoneE164: string, mediaFileName: string, mediaType: string, caption?: string, originalFileName?: string) =>
+    apiFetch<{ message: Message; threadId: string }>('/messages/send-media', {
+      method: 'POST',
+      body: JSON.stringify({ phoneE164, mediaFileName, mediaType, caption, originalFileName }),
+    }),
   takeoverThread: (id: string) =>
     apiFetch<{ thread: ThreadListItem }>(`/threads/${id}/takeover`, { method: 'POST' }),
   releaseThread: (id: string) =>
@@ -128,6 +157,62 @@ export const api = {
     apiFetch<{ message: string; statusBefore: any; statusAfter: any }>('/auth/logout', { method: 'GET' }),
   deleteThread: (id: string) =>
     apiFetch<{ message: string }>(`/threads/${id}`, { method: 'DELETE' }),
+  
+  // 模版管理 API
+  // 注意：apiFetch 已经返回 response.data，不需要再访问 .data 属性
+  getTemplates: (params?: { category?: string; search?: string; isActive?: boolean }) =>
+    apiFetch<any[]>(`/templates${params ? '?' + new URLSearchParams(Object.entries(params).filter(([_, v]) => v !== undefined).map(([k, v]) => [k, String(v)])).toString() : ''}`),
+  getTemplate: (id: string) =>
+    apiFetch<any>(`/templates/${id}`),
+  createTemplate: (data: { name: string; content: string; category?: string; description?: string; tags?: string[]; variables?: string[] }) =>
+    apiFetch<any>('/templates', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateTemplate: (id: string, data: { name?: string; content?: string; category?: string; description?: string; tags?: string[]; variables?: string[]; isActive?: boolean }) =>
+    apiFetch<any>(`/templates/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  deleteTemplate: (id: string) =>
+    apiFetch<{ message: string }>(`/templates/${id}`, { method: 'DELETE' }),
+  useTemplate: (id: string) =>
+    apiFetch<any>(`/templates/${id}/use`, { method: 'POST' }),
+  duplicateTemplate: (id: string, name?: string) =>
+    apiFetch<any>(`/templates/${id}/duplicate`, {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    }),
+  renderTemplate: (id: string, variables: Record<string, string>) =>
+    apiFetch<{ original: string; rendered: string; variables: string[] }>(`/templates/${id}/render`, {
+      method: 'POST',
+      body: JSON.stringify({ variables }),
+    }),
+  getTemplateStats: () =>
+    apiFetch<any>('/templates/stats'),
+  getPopularTemplates: (limit?: number) =>
+    apiFetch<any[]>(`/templates/popular${limit ? '?limit=' + limit : ''}`),
+  searchTemplates: (query: string, category?: string, limit?: number) =>
+    apiFetch<any[]>('/templates/search', {
+      method: 'POST',
+      body: JSON.stringify({ query, category, limit }),
+    }),
+  
+  // 分类管理 API
+  getTemplateCategories: () =>
+    apiFetch<any[]>('/templates/categories'),
+  createTemplateCategory: (data: { name: string; description?: string; icon?: string; color?: string }) =>
+    apiFetch<any>('/templates/categories', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateTemplateCategory: (id: string, data: { name?: string; description?: string; icon?: string; color?: string }) =>
+    apiFetch<any>(`/templates/categories/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  deleteTemplateCategory: (id: string) =>
+    apiFetch<{ message: string }>(`/templates/categories/${id}`, { method: 'DELETE' }),
   startLogin: () =>
     apiFetch<{ message: string }>('/auth/login/start', { method: 'POST' }),
   getQRCode: () =>
@@ -289,9 +374,20 @@ export const api = {
         body: JSON.stringify(config),
       }),
     
+    // 批量删除联系人
+    deleteContacts: (contactIds: string[]) =>
+      apiFetch<BatchOperation>('/batch/delete', {
+        method: 'POST',
+        body: JSON.stringify({ contactIds }),
+      }),
+    
     // 获取批量操作状态
     getStatus: (batchId: string) =>
       apiFetch<BatchOperation>(`/batch/${batchId}/status`),
+    
+    // 获取批量操作详情
+    getOperation: (batchId: string) =>
+      apiFetch<BatchOperation>(`/batch/${batchId}`),
     
     // 取消批量操作
     cancel: (batchId: string) =>
@@ -306,6 +402,16 @@ export const api = {
       if (filters?.offset) params.append('offset', filters.offset.toString());
       
       return apiFetch<BatchOperation[]>(`/batch?${params.toString()}`);
+    },
+    
+    // 获取批量操作统计
+    getStats: (filters?: { type?: string; status?: string; createdAfter?: string }) => {
+      const params = new URLSearchParams();
+      if (filters?.type) params.append('type', filters.type);
+      if (filters?.status) params.append('status', filters.status);
+      if (filters?.createdAfter) params.append('createdAfter', filters.createdAfter);
+      
+      return apiFetch<any>(`/batch/stats?${params.toString()}`);
     },
   },
 
@@ -367,9 +473,38 @@ export const api = {
     // 使用知识库条目（记录使用次数）
     use: (id: string) =>
       apiFetch<{ message: string }>(`/knowledge/${id}/use`, { method: 'POST' }),
+    
+    // 获取知识库统计
+    getStats: () =>
+      apiFetch<any>('/knowledge/stats'),
+    
+    // 分类管理
+    categories: {
+      // 获取分类列表
+      list: () =>
+        apiFetch<FAQCategory[]>('/knowledge/categories'),
+      
+      // 创建分类
+      create: (data: { name: string; description?: string; icon?: string; color?: string }) =>
+        apiFetch<FAQCategory>('/knowledge/categories', {
+          method: 'POST',
+          body: JSON.stringify(data),
+        }),
+      
+      // 更新分类
+      update: (id: string, data: Partial<{ name: string; description?: string; icon?: string; color?: string }>) =>
+        apiFetch<FAQCategory>(`/knowledge/categories/${id}`, {
+          method: 'PUT',
+          body: JSON.stringify(data),
+        }),
+      
+      // 删除分类
+      delete: (id: string) =>
+        apiFetch<{ message: string }>(`/knowledge/categories/${id}`, { method: 'DELETE' }),
+    },
   },
 
-  // FAQ分类API
+  // FAQ分类API（保留以向后兼容）
   faqCategories: {
     // 获取分类列表
     list: () =>
@@ -394,6 +529,41 @@ export const api = {
       apiFetch<{ message: string }>(`/knowledge/categories/${id}`, { method: 'DELETE' }),
   },
 
+  // 翻译 API
+  translation: {
+    // 翻译文本
+    translate: (text: string, targetLang: string = 'zh') =>
+      apiFetch<{ translatedText: string; sourceLang: string; fromCache: boolean }>('/translate', {
+        method: 'POST',
+        body: JSON.stringify({ text, targetLang }),
+      }),
+
+    // 批量翻译消息
+    translateMessages: (messageIds: string[]) =>
+      apiFetch<any[]>('/translate/messages', {
+        method: 'POST',
+        body: JSON.stringify({ messageIds }),
+      }),
+
+    // 切换自动翻译
+    toggleAutoTranslate: (threadId: string, enabled: boolean) =>
+      apiFetch<any>('/translate/toggle', {
+        method: 'POST',
+        body: JSON.stringify({ threadId, enabled }),
+      }),
+
+    // 获取统计
+    getStats: () =>
+      apiFetch<any>('/translate/stats'),
+
+    // 清理旧缓存
+    cleanup: (daysOld: number = 90) =>
+      apiFetch<{ deletedCount: number; message: string }>('/translate/cleanup', {
+        method: 'POST',
+        body: JSON.stringify({ daysOld }),
+      }),
+  },
+
   // 认证相关API
   auth: {
     // 启动登录流程
@@ -415,6 +585,173 @@ export const api = {
       apiFetch<{ message: string }>('/auth/logout', {
         method: 'GET',
       }),
+  },
+
+  // 系统设置 API
+  settings: {
+    get: () => apiFetch<any>('/settings'),
+    update: (settings: any) =>
+      apiFetch<any>('/settings', {
+        method: 'PUT',
+        body: JSON.stringify(settings),
+      }),
+  },
+
+  // 统计 API
+  stats: {
+    overview: () => apiFetch<any>('/stats/overview'),
+    messages: () => apiFetch<any>('/stats/messages'),
+    activity: () => apiFetch<any>('/stats/activity'),
+  },
+
+  // 数据管理 API
+  data: {
+    export: (config: {
+      types: string[];
+      format?: 'json' | 'csv';
+      dateFrom?: string;
+      dateTo?: string;
+    }) =>
+      apiFetch<any>('/data/export', {
+        method: 'POST',
+        body: JSON.stringify(config),
+      }),
+    cleanup: (config: { types: string[]; daysOld: number }) =>
+      apiFetch<any>('/data/cleanup', {
+        method: 'POST',
+        body: JSON.stringify(config),
+      }),
+    storageInfo: () => apiFetch<any>('/data/storage-info'),
+  },
+
+  // 媒体文件 API
+  media: {
+    upload: async (file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await fetch(`${API_BASE_URL}/media/upload`, {
+        method: 'POST',
+        body: formData,
+        headers: API_TOKEN ? { Authorization: `Bearer ${API_TOKEN}` } : {},
+      });
+      
+      if (!response.ok) {
+        throw new Error(`上传失败: ${response.statusText}`);
+      }
+      
+      const result = await response.json();
+      return result.data;
+    },
+    getUrl: (fileName: string) => `${API_BASE_URL}/media/files/${fileName}`,
+    getThumbnailUrl: (fileName: string) => `${API_BASE_URL}/media/thumbnails/${fileName}`,
+    delete: (fileName: string) =>
+      apiFetch<any>(`/media/${fileName}`, {
+        method: 'DELETE',
+      }),
+    getInfo: (fileName: string) => apiFetch<any>(`/media/info/${fileName}`),
+  },
+
+  // 消息操作 API
+  messages: {
+    reply: (data: {
+      threadId: string;
+      replyToId: string;
+      text: string;
+      direction?: string;
+      externalId?: string;
+    }) =>
+      apiFetch<any>('/messages/reply', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    edit: (id: string, text: string) =>
+      apiFetch<any>(`/messages/${id}/edit`, {
+        method: 'PUT',
+        body: JSON.stringify({ text }),
+      }),
+    delete: (id: string, deletedBy?: string) =>
+      apiFetch<any>(`/messages/${id}`, {
+        method: 'DELETE',
+        body: JSON.stringify({ deletedBy: deletedBy || 'user' }),
+      }),
+    forward: (id: string, targetThreadIds: string[], direction?: string) =>
+      apiFetch<any>(`/messages/${id}/forward`, {
+        method: 'POST',
+        body: JSON.stringify({ targetThreadIds, direction: direction || 'OUT' }),
+      }),
+    star: (id: string, starred: boolean) =>
+      apiFetch<any>(`/messages/${id}/star`, {
+        method: 'POST',
+        body: JSON.stringify({ starred }),
+      }),
+    search: (query: string, threadId?: string, limit?: number, offset?: number) => {
+      const params = new URLSearchParams();
+      params.append('query', query);
+      if (threadId) params.append('threadId', threadId);
+      if (limit) params.append('limit', limit.toString());
+      if (offset) params.append('offset', offset.toString());
+      
+      return apiFetch<any>(`/messages/search?${params.toString()}`);
+    },
+    getStarred: (threadId?: string) => {
+      const params = new URLSearchParams();
+      if (threadId) params.append('threadId', threadId);
+      
+      return apiFetch<any>(`/messages/starred?${params.toString()}`);
+    },
+    getDetails: (id: string) => apiFetch<any>(`/messages/${id}/details`),
+  },
+
+  // 会话管理 API
+  threads: {
+    pin: (id: string, pinned: boolean) =>
+      apiFetch<any>(`/threads/${id}/pin`, {
+        method: 'POST',
+        body: JSON.stringify({ pinned }),
+      }),
+    archive: (id: string, archived: boolean) =>
+      apiFetch<any>(`/threads/${id}/archive`, {
+        method: 'POST',
+        body: JSON.stringify({ archived }),
+      }),
+    updateLabels: (id: string, labels: string[]) =>
+      apiFetch<any>(`/threads/${id}/labels`, {
+        method: 'PUT',
+        body: JSON.stringify({ labels }),
+      }),
+    markAsRead: (id: string) =>
+      apiFetch<any>(`/threads/${id}/read`, {
+        method: 'POST',
+      }),
+    saveDraft: (id: string, draft: string) =>
+      apiFetch<any>(`/threads/${id}/draft`, {
+        method: 'PUT',
+        body: JSON.stringify({ draft }),
+      }),
+    getDraft: (id: string) => apiFetch<any>(`/threads/${id}/draft`),
+    getFiltered: (filter: {
+      isPinned?: boolean;
+      isArchived?: boolean;
+      labels?: string[];
+      hasUnread?: boolean;
+    }) => {
+      const params = new URLSearchParams();
+      if (filter.isPinned !== undefined) params.append('isPinned', filter.isPinned.toString());
+      if (filter.isArchived !== undefined) params.append('isArchived', filter.isArchived.toString());
+      if (filter.labels) filter.labels.forEach(label => params.append('labels', label));
+      if (filter.hasUnread !== undefined) params.append('hasUnread', filter.hasUnread.toString());
+      
+      return apiFetch<any>(`/threads/filtered?${params.toString()}`);
+    },
+    getMessages: (id: string, limit?: number, before?: string, after?: string) => {
+      const params = new URLSearchParams();
+      if (limit) params.append('limit', limit.toString());
+      if (before) params.append('before', before);
+      if (after) params.append('after', after);
+      
+      return apiFetch<any>(`/threads/${id}/messages?${params.toString()}`);
+    },
   },
 
 };

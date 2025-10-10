@@ -1,0 +1,457 @@
+
+> whatsapp-automation-server@1.0.0 dev
+> tsx --require dotenv/config app/src/main.ts
+
+{"level":40,"time":1759996517052,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"AUTH_TOKEN is not configured. Authentication is disabled."}
+{"level":30,"time":1759996517063,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Server listening at http://127.0.0.1:4000"}
+{"level":30,"time":1759996517063,"pid":62128,"hostname":"DESKTOP-RSPVJHE","port":4000,"host":"0.0.0.0","msg":"Fastify server started"}
+{"level":30,"time":1759996517063,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Server listening at http://198.18.0.1:4000"}
+{"level":30,"time":1759996517063,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Server listening at http://172.21.160.1:4000"}
+{"level":30,"time":1759996517063,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Server listening at http://192.168.1.19:4000"}
+{"level":30,"time":1759996517063,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Server listening at http://172.21.48.1:4000"}
+{"level":30,"time":1759996518613,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":60780},"msg":"incoming request"}
+{"level":30,"time":1759996518618,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1","res":{"statusCode":200},"responseTime":4.844399988651276,"msg":"request completed"}
+{"level":30,"time":1759996522604,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":60780},"msg":"incoming request"}
+{"level":30,"time":1759996522604,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2","res":{"statusCode":200},"responseTime":0.6948000192642212,"msg":"request completed"}
+{"level":30,"time":1759996526618,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":60780},"msg":"incoming request"}
+{"level":30,"time":1759996526618,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3","res":{"statusCode":200},"responseTime":0.346699982881546,"msg":"request completed"}
+{"level":30,"time":1759996530603,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-4","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":60780},"msg":"incoming request"}
+{"level":30,"time":1759996530604,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-4","res":{"statusCode":200},"responseTime":0.459199994802475,"msg":"request completed"}
+{"level":30,"time":1759996534614,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-5","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":60780},"msg":"incoming request"}
+{"level":30,"time":1759996534615,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-5","res":{"statusCode":200},"responseTime":0.4115000069141388,"msg":"request completed"}
+{"level":30,"time":1759996538605,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-6","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":60780},"msg":"incoming request"}
+{"level":30,"time":1759996538605,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-6","res":{"statusCode":200},"responseTime":0.5029000043869019,"msg":"request completed"}
+{"level":30,"time":1759996542605,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-7","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":60780},"msg":"incoming request"}
+{"level":30,"time":1759996542606,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-7","res":{"statusCode":200},"responseTime":0.43219998478889465,"msg":"request completed"}
+{"level":30,"time":1759996546610,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-8","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":60780},"msg":"incoming request"}
+{"level":30,"time":1759996546610,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-8","res":{"statusCode":200},"responseTime":0.40080001950263977,"msg":"request completed"}
+{"level":30,"time":1759996548853,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-9","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":60780},"msg":"incoming request"}
+{"level":30,"time":1759996548854,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-9","res":{"statusCode":200},"responseTime":0.7410000264644623,"msg":"request completed"}
+{"level":30,"time":1759996552865,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-a","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":60780},"msg":"incoming request"}
+{"level":30,"time":1759996552866,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-a","res":{"statusCode":200},"responseTime":0.7849000096321106,"msg":"request completed"}
+{"level":30,"time":1759996556856,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-b","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":60780},"msg":"incoming request"}
+{"level":30,"time":1759996556857,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-b","res":{"statusCode":200},"responseTime":0.6836000084877014,"msg":"request completed"}
+{"level":30,"time":1759996560854,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-c","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":60780},"msg":"incoming request"}
+{"level":30,"time":1759996560855,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-c","res":{"statusCode":200},"responseTime":0.6121000051498413,"msg":"request completed"}
+{"level":30,"time":1759996564858,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-d","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":60780},"msg":"incoming request"}
+{"level":30,"time":1759996564859,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-d","res":{"statusCode":200},"responseTime":0.6428000032901764,"msg":"request completed"}
+{"level":30,"time":1759996568855,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-e","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":60780},"msg":"incoming request"}
+{"level":30,"time":1759996568855,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-e","res":{"statusCode":200},"responseTime":0.5538000166416168,"msg":"request completed"}
+{"level":30,"time":1759996855535,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-f","req":{"method":"GET","url":"/status","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":59910},"msg":"incoming request"}
+{"level":30,"time":1759996855542,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-g","req":{"method":"GET","url":"/threads","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":59927},"msg":"incoming request"}
+{"level":30,"time":1759996855612,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-f","res":{"statusCode":200},"responseTime":77.62639999389648,"msg":"request completed"}
+{"level":30,"time":1759996855633,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-g","res":{"statusCode":200},"responseTime":91.51389998197556,"msg":"request completed"}
+{"level":30,"time":1759996856841,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-h","req":{"method":"GET","url":"/ws","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":59980},"msg":"incoming request"}
+{"level":30,"time":1759996856844,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"新的WebSocket连接建立"}
+{"level":30,"time":1759996856845,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"WebSocket连接数: 1"}
+{"level":30,"time":1759996887618,"pid":62128,"hostname":"DESKTOP-RSPVJHE","message":{"type":"ping","data":{},"timestamp":1759996887562},"msg":"收到WebSocket客户端消息"}
+{"level":30,"time":1759996889101,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-i","req":{"method":"GET","url":"/status","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":59927},"msg":"incoming request"}
+{"level":30,"time":1759996889103,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-j","req":{"method":"GET","url":"/threads","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":59910},"msg":"incoming request"}
+{"level":30,"time":1759996889105,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-i","res":{"statusCode":200},"responseTime":3.392099976539612,"msg":"request completed"}
+{"level":30,"time":1759996889119,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-j","res":{"statusCode":200},"responseTime":15.572400003671646,"msg":"request completed"}
+{"level":30,"time":1759996890417,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-k","req":{"method":"GET","url":"/ws","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":60169},"msg":"incoming request"}
+{"level":30,"time":1759996890418,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"新的WebSocket连接建立"}
+{"level":30,"time":1759996890418,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"WebSocket连接数: 2"}
+{"level":30,"time":1759996917548,"pid":62128,"hostname":"DESKTOP-RSPVJHE","message":{"type":"ping","data":{},"timestamp":1759996917547},"msg":"收到WebSocket客户端消息"}
+{"level":30,"time":1759996920546,"pid":62128,"hostname":"DESKTOP-RSPVJHE","message":{"type":"ping","data":{},"timestamp":1759996920545},"msg":"收到WebSocket客户端消息"}
+{"level":30,"time":1759996947625,"pid":62128,"hostname":"DESKTOP-RSPVJHE","message":{"type":"ping","data":{},"timestamp":1759996947623},"msg":"收到WebSocket客户端消息"}
+{"level":30,"time":1759996950553,"pid":62128,"hostname":"DESKTOP-RSPVJHE","message":{"type":"ping","data":{},"timestamp":1759996950552},"msg":"收到WebSocket客户端消息"}
+{"level":30,"time":1759996977546,"pid":62128,"hostname":"DESKTOP-RSPVJHE","message":{"type":"ping","data":{},"timestamp":1759996977545},"msg":"收到WebSocket客户端消息"}
+{"level":30,"time":1759996980427,"pid":62128,"hostname":"DESKTOP-RSPVJHE","message":{"type":"ping","data":{},"timestamp":1759996980427},"msg":"收到WebSocket客户端消息"}
+{"level":30,"time":1759997007568,"pid":62128,"hostname":"DESKTOP-RSPVJHE","message":{"type":"ping","data":{},"timestamp":1759997007568},"msg":"收到WebSocket客户端消息"}
+{"level":30,"time":1759997010428,"pid":62128,"hostname":"DESKTOP-RSPVJHE","message":{"type":"ping","data":{},"timestamp":1759997010428},"msg":"收到WebSocket客户端消息"}
+{"level":30,"time":1759997040425,"pid":62128,"hostname":"DESKTOP-RSPVJHE","message":{"type":"ping","data":{},"timestamp":1759997040425},"msg":"收到WebSocket客户端消息"}
+{"level":30,"time":1759997067757,"pid":62128,"hostname":"DESKTOP-RSPVJHE","message":{"type":"ping","data":{},"timestamp":1759997067756},"msg":"收到WebSocket客户端消息"}
+{"level":30,"time":1759997070434,"pid":62128,"hostname":"DESKTOP-RSPVJHE","message":{"type":"ping","data":{},"timestamp":1759997070433},"msg":"收到WebSocket客户端消息"}
+{"level":30,"time":1759997100419,"pid":62128,"hostname":"DESKTOP-RSPVJHE","message":{"type":"ping","data":{},"timestamp":1759997100419},"msg":"收到WebSocket客户端消息"}
+{"level":30,"time":1759997127646,"pid":62128,"hostname":"DESKTOP-RSPVJHE","message":{"type":"ping","data":{},"timestamp":1759997127646},"msg":"收到WebSocket客户端消息"}
+{"level":30,"time":1759997130542,"pid":62128,"hostname":"DESKTOP-RSPVJHE","message":{"type":"ping","data":{},"timestamp":1759997130542},"msg":"收到WebSocket客户端消息"}
+{"level":30,"time":1759997130726,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-l","req":{"method":"GET","url":"/status","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997130727,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-m","req":{"method":"GET","url":"/threads","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65521},"msg":"incoming request"}
+{"level":30,"time":1759997130741,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-m","res":{"statusCode":200},"responseTime":14.226799994707108,"msg":"request completed"}
+{"level":30,"time":1759997130742,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-l","res":{"statusCode":200},"responseTime":16.344300001859665,"msg":"request completed"}
+{"level":30,"time":1759997134125,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-n","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997134126,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-n","res":{"statusCode":200},"responseTime":0.8135999739170074,"msg":"request completed"}
+{"level":30,"time":1759997138137,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-o","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997138137,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-o","res":{"statusCode":200},"responseTime":0.6421000063419342,"msg":"request completed"}
+{"level":30,"time":1759997142141,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-p","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997142142,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-p","res":{"statusCode":200},"responseTime":0.590499997138977,"msg":"request completed"}
+{"level":30,"time":1759997146130,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-q","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997146131,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-q","res":{"statusCode":200},"responseTime":0.4578000009059906,"msg":"request completed"}
+{"level":30,"time":1759997150137,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-r","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997150137,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-r","res":{"statusCode":200},"responseTime":0.6538999974727631,"msg":"request completed"}
+{"level":30,"time":1759997154130,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-s","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997154131,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-s","res":{"statusCode":200},"responseTime":0.7084999978542328,"msg":"request completed"}
+{"level":30,"time":1759997158137,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-t","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997158138,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-t","res":{"statusCode":200},"responseTime":0.44130000472068787,"msg":"request completed"}
+{"level":30,"time":1759997160544,"pid":62128,"hostname":"DESKTOP-RSPVJHE","message":{"type":"ping","data":{},"timestamp":1759997160543},"msg":"收到WebSocket客户端消息"}
+{"level":30,"time":1759997162138,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-u","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997162139,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-u","res":{"statusCode":200},"responseTime":0.6444999873638153,"msg":"request completed"}
+{"level":30,"time":1759997166129,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-v","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997166130,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-v","res":{"statusCode":200},"responseTime":0.573199987411499,"msg":"request completed"}
+{"level":30,"time":1759997170129,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-w","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997170130,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-w","res":{"statusCode":200},"responseTime":0.9400999844074249,"msg":"request completed"}
+{"level":30,"time":1759997174140,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-x","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997174141,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-x","res":{"statusCode":200},"responseTime":0.5893999934196472,"msg":"request completed"}
+{"level":30,"time":1759997178128,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-y","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997178129,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-y","res":{"statusCode":200},"responseTime":0.9190999865531921,"msg":"request completed"}
+{"level":30,"time":1759997182134,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-z","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997182134,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-z","res":{"statusCode":200},"responseTime":0.44749999046325684,"msg":"request completed"}
+{"level":30,"time":1759997186136,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-10","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997186137,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-10","res":{"statusCode":200},"responseTime":0.7495000064373016,"msg":"request completed"}
+{"level":30,"time":1759997187611,"pid":62128,"hostname":"DESKTOP-RSPVJHE","message":{"type":"ping","data":{},"timestamp":1759997187610},"msg":"收到WebSocket客户端消息"}
+{"level":30,"time":1759997190141,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-11","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997190142,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-11","res":{"statusCode":200},"responseTime":0.4455000162124634,"msg":"request completed"}
+{"level":30,"time":1759997194135,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-12","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997194135,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-12","res":{"statusCode":200},"responseTime":0.39239999651908875,"msg":"request completed"}
+{"level":30,"time":1759997198138,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-13","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997198140,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-13","res":{"statusCode":200},"responseTime":1.5983999967575073,"msg":"request completed"}
+{"level":30,"time":1759997202135,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-14","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997202135,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-14","res":{"statusCode":200},"responseTime":0.44179999828338623,"msg":"request completed"}
+{"level":30,"time":1759997206135,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-15","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997206135,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-15","res":{"statusCode":200},"responseTime":0.35280001163482666,"msg":"request completed"}
+{"level":30,"time":1759997210136,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-16","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997210137,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-16","res":{"statusCode":200},"responseTime":0.4845000207424164,"msg":"request completed"}
+{"level":30,"time":1759997214139,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-17","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997214140,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-17","res":{"statusCode":200},"responseTime":0.47040000557899475,"msg":"request completed"}
+{"level":30,"time":1759997218127,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-18","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997218128,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-18","res":{"statusCode":200},"responseTime":0.47440001368522644,"msg":"request completed"}
+{"level":30,"time":1759997221553,"pid":62128,"hostname":"DESKTOP-RSPVJHE","message":{"type":"ping","data":{},"timestamp":1759997221552},"msg":"收到WebSocket客户端消息"}
+{"level":30,"time":1759997222138,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-19","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997222139,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-19","res":{"statusCode":200},"responseTime":0.5798999965190887,"msg":"request completed"}
+{"level":30,"time":1759997226141,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1a","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997226142,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1a","res":{"statusCode":200},"responseTime":0.608599990606308,"msg":"request completed"}
+{"level":30,"time":1759997233205,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1b","req":{"method":"GET","url":"/threads","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997233206,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1c","req":{"method":"GET","url":"/threads","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":58599},"msg":"incoming request"}
+{"level":30,"time":1759997233220,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1b","res":{"statusCode":200},"responseTime":15.103300005197525,"msg":"request completed"}
+{"level":30,"time":1759997233227,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1c","res":{"statusCode":200},"responseTime":20.482199996709824,"msg":"request completed"}
+{"level":30,"time":1759997235572,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1d","req":{"method":"GET","url":"/contacts","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":58599},"msg":"incoming request"}
+{"level":30,"time":1759997235574,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1e","req":{"method":"GET","url":"/contacts","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997235588,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1d","res":{"statusCode":200},"responseTime":15.058299988508224,"msg":"request completed"}
+{"level":30,"time":1759997235598,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1e","res":{"statusCode":200},"responseTime":23.67289999127388,"msg":"request completed"}
+{"level":30,"time":1759997247578,"pid":62128,"hostname":"DESKTOP-RSPVJHE","message":{"type":"ping","data":{},"timestamp":1759997247577},"msg":"收到WebSocket客户端消息"}
+{"level":30,"time":1759997251773,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1f","req":{"method":"GET","url":"/status","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997251788,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1f","res":{"statusCode":200},"responseTime":14.726000010967255,"msg":"request completed"}
+{"level":30,"time":1759997251849,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1g","req":{"method":"GET","url":"/threads","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997251861,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1g","res":{"statusCode":200},"responseTime":11.351199984550476,"msg":"request completed"}
+{"level":30,"time":1759997260259,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1h","req":{"method":"GET","url":"/threads","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997260260,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1i","req":{"method":"GET","url":"/threads","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":58599},"msg":"incoming request"}
+{"level":30,"time":1759997260278,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1i","res":{"statusCode":200},"responseTime":17.736699998378754,"msg":"request completed"}
+{"level":30,"time":1759997260285,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1h","res":{"statusCode":200},"responseTime":25.94750002026558,"msg":"request completed"}
+{"level":30,"time":1759997268724,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1j","req":{"method":"GET","url":"/threads","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997268727,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1k","req":{"method":"GET","url":"/threads/cmg6av6x5000wws1cml2eunhv/messages?limit=50","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":58599},"msg":"incoming request"}
+{"level":30,"time":1759997268731,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1l","req":{"method":"GET","url":"/threads","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":59006},"msg":"incoming request"}
+{"level":30,"time":1759997268732,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1m","req":{"method":"GET","url":"/threads/cmg6av6x5000wws1cml2eunhv/messages?limit=50","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":59008},"msg":"incoming request"}
+{"level":30,"time":1759997268753,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1l","res":{"statusCode":200},"responseTime":22.25849997997284,"msg":"request completed"}
+{"level":30,"time":1759997268761,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1j","res":{"statusCode":200},"responseTime":36.079499989748,"msg":"request completed"}
+{"level":30,"time":1759997268766,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1m","res":{"statusCode":200},"responseTime":34.36149999499321,"msg":"request completed"}
+{"level":30,"time":1759997268768,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1k","res":{"statusCode":200},"responseTime":41.64190000295639,"msg":"request completed"}
+{"level":30,"time":1759997277778,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1n","req":{"method":"OPTIONS","url":"/messages/send","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":58599},"msg":"incoming request"}
+{"level":30,"time":1759997277780,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1n","res":{"statusCode":204},"responseTime":1.930400013923645,"msg":"request completed"}
+{"level":30,"time":1759997277781,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1o","req":{"method":"POST","url":"/messages/send","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":58599},"msg":"incoming request"}
+{"level":30,"time":1759997277784,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1o","msg":"Route POST:/messages/send not found"}
+{"level":30,"time":1759997277785,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1o","res":{"statusCode":404},"responseTime":3.6787999868392944,"msg":"request completed"}
+{"level":30,"time":1759997278456,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1p","req":{"method":"OPTIONS","url":"/messages/send","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":58599},"msg":"incoming request"}
+{"level":30,"time":1759997278457,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1p","res":{"statusCode":204},"responseTime":0.5166999995708466,"msg":"request completed"}
+{"level":30,"time":1759997278458,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1q","req":{"method":"POST","url":"/messages/send","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":58599},"msg":"incoming request"}
+{"level":30,"time":1759997278459,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1q","msg":"Route POST:/messages/send not found"}
+{"level":30,"time":1759997278459,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1q","res":{"statusCode":404},"responseTime":0.974399983882904,"msg":"request completed"}
+{"level":30,"time":1759997278772,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1r","req":{"method":"OPTIONS","url":"/messages/send","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":58599},"msg":"incoming request"}
+{"level":30,"time":1759997278773,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1r","res":{"statusCode":204},"responseTime":0.4037000238895416,"msg":"request completed"}
+{"level":30,"time":1759997278774,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1s","req":{"method":"POST","url":"/messages/send","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":58599},"msg":"incoming request"}
+{"level":30,"time":1759997278775,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1s","msg":"Route POST:/messages/send not found"}
+{"level":30,"time":1759997278775,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1s","res":{"statusCode":404},"responseTime":0.8837000131607056,"msg":"request completed"}
+{"level":30,"time":1759997282569,"pid":62128,"hostname":"DESKTOP-RSPVJHE","message":{"type":"ping","data":{},"timestamp":1759997282563},"msg":"收到WebSocket客户端消息"}
+{"level":30,"time":1759997307547,"pid":62128,"hostname":"DESKTOP-RSPVJHE","message":{"type":"ping","data":{},"timestamp":1759997307547},"msg":"收到WebSocket客户端消息"}
+{"level":30,"time":1759997337367,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1t","req":{"method":"GET","url":"/threads","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":58599},"msg":"incoming request"}
+{"level":30,"time":1759997337368,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1u","req":{"method":"GET","url":"/threads/cmg6av6x5000wws1cml2eunhv/messages?limit=50","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":59008},"msg":"incoming request"}
+{"level":30,"time":1759997337372,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1u","res":{"statusCode":200},"responseTime":4.781499981880188,"msg":"request completed"}
+{"level":30,"time":1759997337381,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1t","res":{"statusCode":200},"responseTime":14.639299988746643,"msg":"request completed"}
+{"level":30,"time":1759997339779,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1v","req":{"method":"GET","url":"/status","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":58599},"msg":"incoming request"}
+{"level":30,"time":1759997339781,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1w","req":{"method":"GET","url":"/threads","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":59008},"msg":"incoming request"}
+{"level":30,"time":1759997339782,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1v","res":{"statusCode":200},"responseTime":3.289900004863739,"msg":"request completed"}
+{"level":30,"time":1759997339783,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1x","req":{"method":"GET","url":"/status","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997339784,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1y","req":{"method":"GET","url":"/threads","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":59006},"msg":"incoming request"}
+{"level":30,"time":1759997339787,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1x","res":{"statusCode":200},"responseTime":3.81700000166893,"msg":"request completed"}
+{"level":30,"time":1759997339796,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1w","res":{"statusCode":200},"responseTime":15.444700002670288,"msg":"request completed"}
+{"level":30,"time":1759997339802,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1y","res":{"statusCode":200},"responseTime":18.090400010347366,"msg":"request completed"}
+{"level":30,"time":1759997340624,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1z","req":{"method":"GET","url":"/threads","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":59006},"msg":"incoming request"}
+{"level":30,"time":1759997340630,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-20","req":{"method":"GET","url":"/threads","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":59008},"msg":"incoming request"}
+{"level":30,"time":1759997340638,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-1z","res":{"statusCode":200},"responseTime":13.365800023078918,"msg":"request completed"}
+{"level":30,"time":1759997340644,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-20","res":{"statusCode":200},"responseTime":13.709600001573563,"msg":"request completed"}
+{"level":30,"time":1759997341324,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-21","req":{"method":"GET","url":"/status","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":59008},"msg":"incoming request"}
+{"level":30,"time":1759997341332,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-22","req":{"method":"GET","url":"/threads","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":59006},"msg":"incoming request"}
+{"level":30,"time":1759997341333,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-23","req":{"method":"GET","url":"/status","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997341334,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-24","req":{"method":"GET","url":"/threads","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":58599},"msg":"incoming request"}
+{"level":30,"time":1759997341335,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-23","res":{"statusCode":200},"responseTime":2.3142000138759613,"msg":"request completed"}
+{"level":30,"time":1759997341347,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-22","res":{"statusCode":200},"responseTime":14.658499985933304,"msg":"request completed"}
+{"level":30,"time":1759997341347,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-21","res":{"statusCode":200},"responseTime":23.406699985265732,"msg":"request completed"}
+{"level":30,"time":1759997341353,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-24","res":{"statusCode":200},"responseTime":18.883799999952316,"msg":"request completed"}
+{"level":30,"time":1759997343548,"pid":62128,"hostname":"DESKTOP-RSPVJHE","message":{"type":"ping","data":{},"timestamp":1759997343547},"msg":"收到WebSocket客户端消息"}
+{"level":30,"time":1759997367609,"pid":62128,"hostname":"DESKTOP-RSPVJHE","message":{"type":"ping","data":{},"timestamp":1759997367609},"msg":"收到WebSocket客户端消息"}
+{"level":30,"time":1759997398049,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-25","req":{"method":"GET","url":"/status","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":58599},"msg":"incoming request"}
+{"level":30,"time":1759997398050,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-26","req":{"method":"GET","url":"/threads","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":59008},"msg":"incoming request"}
+{"level":30,"time":1759997398058,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-25","res":{"statusCode":200},"responseTime":9.00789999961853,"msg":"request completed"}
+{"level":30,"time":1759997398062,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-26","res":{"statusCode":200},"responseTime":12.219900012016296,"msg":"request completed"}
+{"level":30,"time":1759997400545,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-27","req":{"method":"GET","url":"/status","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":59008},"msg":"incoming request"}
+{"level":30,"time":1759997400549,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-27","res":{"statusCode":200},"responseTime":2.7531999945640564,"msg":"request completed"}
+{"level":30,"time":1759997400552,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-28","req":{"method":"GET","url":"/threads","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":59008},"msg":"incoming request"}
+{"level":30,"time":1759997400573,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-28","res":{"statusCode":200},"responseTime":20.8057000041008,"msg":"request completed"}
+{"level":30,"time":1759997402894,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-29","req":{"method":"GET","url":"/threads","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":59008},"msg":"incoming request"}
+{"level":30,"time":1759997402898,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2a","req":{"method":"GET","url":"/threads","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":58599},"msg":"incoming request"}
+{"level":30,"time":1759997402912,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-29","res":{"statusCode":200},"responseTime":18.02080002427101,"msg":"request completed"}
+{"level":30,"time":1759997402920,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2a","res":{"statusCode":200},"responseTime":22.219200015068054,"msg":"request completed"}
+{"level":30,"time":1759997404552,"pid":62128,"hostname":"DESKTOP-RSPVJHE","message":{"type":"ping","data":{},"timestamp":1759997404551},"msg":"收到WebSocket客户端消息"}
+{"level":30,"time":1759997405648,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2b","req":{"method":"GET","url":"/status","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":58599},"msg":"incoming request"}
+{"level":30,"time":1759997405649,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2c","req":{"method":"GET","url":"/threads","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":59008},"msg":"incoming request"}
+{"level":30,"time":1759997405650,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2d","req":{"method":"GET","url":"/status","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":59006},"msg":"incoming request"}
+{"level":30,"time":1759997405651,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2e","req":{"method":"GET","url":"/threads","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997405662,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2b","res":{"statusCode":200},"responseTime":13.76010000705719,"msg":"request completed"}
+{"level":30,"time":1759997405670,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2d","res":{"statusCode":200},"responseTime":19.29119998216629,"msg":"request completed"}
+{"level":30,"time":1759997405682,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2c","res":{"statusCode":200},"responseTime":33.11950001120567,"msg":"request completed"}
+{"level":30,"time":1759997405689,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2e","res":{"statusCode":200},"responseTime":38.12909999489784,"msg":"request completed"}
+{"level":30,"time":1759997408738,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2f","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997408739,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2f","res":{"statusCode":200},"responseTime":0.526500016450882,"msg":"request completed"}
+{"level":30,"time":1759997412752,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2g","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997412752,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2g","res":{"statusCode":200},"responseTime":0.3296000063419342,"msg":"request completed"}
+{"level":30,"time":1759997416737,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2h","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997416738,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2h","res":{"statusCode":200},"responseTime":0.4296000003814697,"msg":"request completed"}
+{"level":30,"time":1759997420738,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2i","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997420739,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2i","res":{"statusCode":200},"responseTime":0.5376000106334686,"msg":"request completed"}
+{"level":30,"time":1759997424750,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2j","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997424751,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2j","res":{"statusCode":200},"responseTime":0.5170000195503235,"msg":"request completed"}
+{"level":30,"time":1759997427557,"pid":62128,"hostname":"DESKTOP-RSPVJHE","message":{"type":"ping","data":{},"timestamp":1759997427557},"msg":"收到WebSocket客户端消息"}
+{"level":30,"time":1759997428750,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2k","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997428751,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2k","res":{"statusCode":200},"responseTime":0.4059000015258789,"msg":"request completed"}
+{"level":30,"time":1759997432744,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2l","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997432745,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2l","res":{"statusCode":200},"responseTime":0.4090999960899353,"msg":"request completed"}
+{"level":30,"time":1759997436738,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2m","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997436739,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2m","res":{"statusCode":200},"responseTime":0.4763000011444092,"msg":"request completed"}
+{"level":30,"time":1759997440753,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2n","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997440753,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2n","res":{"statusCode":200},"responseTime":0.4588000178337097,"msg":"request completed"}
+{"level":30,"time":1759997444744,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2o","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997444744,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2o","res":{"statusCode":200},"responseTime":0.3610000014305115,"msg":"request completed"}
+{"level":30,"time":1759997448744,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2p","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997448745,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2p","res":{"statusCode":200},"responseTime":0.3652999997138977,"msg":"request completed"}
+{"level":30,"time":1759997452747,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2q","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997452748,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2q","res":{"statusCode":200},"responseTime":0.5605999827384949,"msg":"request completed"}
+{"level":30,"time":1759997456749,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2r","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997456750,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2r","res":{"statusCode":200},"responseTime":0.43059998750686646,"msg":"request completed"}
+{"level":30,"time":1759997460742,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2s","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997460743,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2s","res":{"statusCode":200},"responseTime":0.4945000112056732,"msg":"request completed"}
+{"level":30,"time":1759997464714,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2t","req":{"method":"GET","url":"/threads","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997464715,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2u","req":{"method":"GET","url":"/threads","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":59008},"msg":"incoming request"}
+{"level":30,"time":1759997464727,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2t","res":{"statusCode":200},"responseTime":12.606099992990494,"msg":"request completed"}
+{"level":30,"time":1759997464734,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2u","res":{"statusCode":200},"responseTime":18.575599998235703,"msg":"request completed"}
+{"level":30,"time":1759997465553,"pid":62128,"hostname":"DESKTOP-RSPVJHE","message":{"type":"ping","data":{},"timestamp":1759997465553},"msg":"收到WebSocket客户端消息"}
+{"level":30,"time":1759997465666,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2v","req":{"method":"GET","url":"/status","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":59008},"msg":"incoming request"}
+{"level":30,"time":1759997465671,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2w","req":{"method":"GET","url":"/threads","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997465672,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2x","req":{"method":"GET","url":"/status","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":59006},"msg":"incoming request"}
+{"level":30,"time":1759997465673,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2y","req":{"method":"GET","url":"/threads","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":58599},"msg":"incoming request"}
+{"level":30,"time":1759997465678,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2v","res":{"statusCode":200},"responseTime":11.396699994802475,"msg":"request completed"}
+{"level":30,"time":1759997465678,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2x","res":{"statusCode":200},"responseTime":6.268500000238419,"msg":"request completed"}
+{"level":30,"time":1759997465684,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2w","res":{"statusCode":200},"responseTime":12.905299991369247,"msg":"request completed"}
+{"level":30,"time":1759997465689,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2y","res":{"statusCode":200},"responseTime":16.447599977254868,"msg":"request completed"}
+{"level":30,"time":1759997470604,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2z","req":{"method":"GET","url":"/threads","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":58599},"msg":"incoming request"}
+{"level":30,"time":1759997470607,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-30","req":{"method":"GET","url":"/threads","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997470625,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-2z","res":{"statusCode":200},"responseTime":20.596500009298325,"msg":"request completed"}
+{"level":30,"time":1759997470637,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-30","res":{"statusCode":200},"responseTime":29.813299983739853,"msg":"request completed"}
+{"level":30,"time":1759997471672,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-31","req":{"method":"GET","url":"/contacts","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997471676,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-32","req":{"method":"GET","url":"/contacts","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":58599},"msg":"incoming request"}
+{"level":30,"time":1759997471685,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-31","res":{"statusCode":200},"responseTime":12.52369999885559,"msg":"request completed"}
+{"level":30,"time":1759997471691,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-32","res":{"statusCode":200},"responseTime":15.209099978208542,"msg":"request completed"}
+{"level":30,"time":1759997477176,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-33","req":{"method":"GET","url":"/threads","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":58599},"msg":"incoming request"}
+{"level":30,"time":1759997477177,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-34","req":{"method":"GET","url":"/threads","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997477189,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-33","res":{"statusCode":200},"responseTime":12.807599991559982,"msg":"request completed"}
+{"level":30,"time":1759997477195,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-34","res":{"statusCode":200},"responseTime":17.535699993371964,"msg":"request completed"}
+{"level":30,"time":1759997487985,"pid":62128,"hostname":"DESKTOP-RSPVJHE","message":{"type":"ping","data":{},"timestamp":1759997487985},"msg":"收到WebSocket客户端消息"}
+{"level":30,"time":1759997492370,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-35","req":{"method":"GET","url":"/contacts","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997492372,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-36","req":{"method":"GET","url":"/contacts","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":58599},"msg":"incoming request"}
+{"level":30,"time":1759997492381,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-36","res":{"statusCode":200},"responseTime":8.934599995613098,"msg":"request completed"}
+{"level":30,"time":1759997492384,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-35","res":{"statusCode":200},"responseTime":14.750699996948242,"msg":"request completed"}
+{"level":30,"time":1759997526547,"pid":62128,"hostname":"DESKTOP-RSPVJHE","message":{"type":"ping","data":{},"timestamp":1759997526547},"msg":"收到WebSocket客户端消息"}
+{"level":30,"time":1759997531092,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-37","req":{"method":"GET","url":"/status","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997531093,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-38","req":{"method":"GET","url":"/threads","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":58599},"msg":"incoming request"}
+{"level":30,"time":1759997531095,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-39","req":{"method":"GET","url":"/threads","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":59008},"msg":"incoming request"}
+{"level":30,"time":1759997531096,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3a","req":{"method":"GET","url":"/status","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":59006},"msg":"incoming request"}
+{"level":30,"time":1759997531097,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-37","res":{"statusCode":200},"responseTime":5.23309999704361,"msg":"request completed"}
+{"level":30,"time":1759997531100,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3a","res":{"statusCode":200},"responseTime":4.019900023937225,"msg":"request completed"}
+{"level":30,"time":1759997531111,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-39","res":{"statusCode":200},"responseTime":15.860799998044968,"msg":"request completed"}
+{"level":30,"time":1759997531117,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-38","res":{"statusCode":200},"responseTime":23.654100000858307,"msg":"request completed"}
+{"level":30,"time":1759997532264,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3b","req":{"method":"POST","url":"/auth/login/start","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":58599},"msg":"incoming request"}
+{"level":30,"time":1759997532264,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Received login start request"}
+{"level":30,"time":1759997532264,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"=== Starting WhatsApp login process ==="}
+{"level":30,"time":1759997532264,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"=== Step 1: Detecting browser path ==="}
+{"level":30,"time":1759997532264,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Starting browser detection..."}
+{"level":30,"time":1759997532265,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Current directory: D:\\projects\\whatsapp-web.js-main 2025.9.29 自动回复养号\\server\\app\\src"}
+{"level":30,"time":1759997532265,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Process CWD: D:\\projects\\whatsapp-web.js-main 2025.9.29 自动回复养号\\server"}
+{"level":30,"time":1759997532265,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Process resourcesPath: N/A"}
+{"level":30,"time":1759997532267,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Found Chromium from @puppeteer/browsers: D:\\projects\\whatsapp-web.js-main 2025.9.29 自动回复养号\\server\\chrome\\win64-141.0.7390.54\\chrome-win64\\chrome.exe"}
+{"level":30,"time":1759997532268,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Found Chromium from @puppeteer/browsers: D:\\projects\\whatsapp-web.js-main 2025.9.29 自动回复养号\\server\\chrome\\win64-141.0.7390.54\\chrome-win64\\chrome.exe"}
+{"level":30,"time":1759997532269,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Found 2 Puppeteer Chromium installation(s)"}
+{"level":30,"time":1759997532269,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Found Puppeteer Chromium at: D:\\projects\\whatsapp-web.js-main 2025.9.29 自动回复养号\\server\\chrome\\win64-141.0.7390.54\\chrome-win64\\chrome.exe"}
+{"level":30,"time":1759997532269,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"✓ Browser detected at: D:\\projects\\whatsapp-web.js-main 2025.9.29 自动回复养号\\server\\chrome\\win64-141.0.7390.54\\chrome-win64\\chrome.exe"}
+{"level":30,"time":1759997532269,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"=== Step 2: Creating WhatsApp client ==="}
+{"level":30,"time":1759997532270,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"=== Step 3: Registering event handlers ==="}
+{"level":30,"time":1759997532270,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"✓ Event handlers registered"}
+{"level":30,"time":1759997532270,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"=== Step 4: Initializing WhatsApp client (this may take 30-60 seconds) ==="}
+{"level":30,"time":1759997535581,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3c","req":{"method":"POST","url":"/auth/login/start","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":59008},"msg":"incoming request"}
+{"level":30,"time":1759997535582,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Received login start request"}
+{"level":30,"time":1759997535582,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"=== Starting WhatsApp login process ==="}
+{"level":40,"time":1759997535582,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"⚠ WhatsApp client status is INITIALIZING but may be stuck!"}
+{"level":30,"time":1759997535582,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Checking if client actually exists..."}
+{"level":30,"time":1759997535582,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Client exists, waiting for completion..."}
+{"level":30,"time":1759997540412,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3d","req":{"method":"GET","url":"/status","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":59006},"msg":"incoming request"}
+{"level":30,"time":1759997540414,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3d","res":{"statusCode":200},"responseTime":2.3055999875068665,"msg":"request completed"}
+{"level":30,"time":1759997540429,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3e","req":{"method":"GET","url":"/threads","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":59006},"msg":"incoming request"}
+{"level":30,"time":1759997540446,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3e","res":{"statusCode":200},"responseTime":16.797199994325638,"msg":"request completed"}
+{"level":30,"time":1759997540749,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"WhatsApp QR code updated"}
+{"level":30,"time":1759997541249,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"=== ✓ WhatsApp client initialization completed successfully ==="}
+{"level":30,"time":1759997541249,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Login process started successfully"}
+{"level":30,"time":1759997541421,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3f","req":{"method":"POST","url":"/auth/login/start","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":59006},"msg":"incoming request"}
+{"level":30,"time":1759997541421,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Received login start request"}
+{"level":30,"time":1759997541421,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3f","res":{"statusCode":200},"responseTime":0.46059998869895935,"msg":"request completed"}
+{"level":30,"time":1759997541421,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"=== Starting WhatsApp login process ==="}
+{"level":30,"time":1759997541421,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"WhatsApp client is already showing QR, returning current status"}
+{"level":30,"time":1759997541421,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Login process started successfully"}
+{"level":30,"time":1759997541431,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3g","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":59006},"msg":"incoming request"}
+{"level":30,"time":1759997541432,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3g","res":{"statusCode":200},"responseTime":0.5733999907970428,"msg":"request completed"}
+{"level":30,"time":1759997541711,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"WhatsApp client initialization completed with status: QR"}
+{"level":30,"time":1759997541711,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Login process started successfully"}
+{"level":30,"time":1759997544374,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3h","req":{"method":"POST","url":"/auth/login/start","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":59006},"msg":"incoming request"}
+{"level":30,"time":1759997544374,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Received login start request"}
+{"level":30,"time":1759997544374,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3h","res":{"statusCode":200},"responseTime":0.38830000162124634,"msg":"request completed"}
+{"level":30,"time":1759997544374,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"=== Starting WhatsApp login process ==="}
+{"level":30,"time":1759997544374,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"WhatsApp client is already showing QR, returning current status"}
+{"level":30,"time":1759997544374,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Login process started successfully"}
+{"level":30,"time":1759997544382,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3i","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":59006},"msg":"incoming request"}
+{"level":30,"time":1759997544382,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3i","res":{"statusCode":200},"responseTime":0.4316999912261963,"msg":"request completed"}
+{"level":30,"time":1759997547585,"pid":62128,"hostname":"DESKTOP-RSPVJHE","message":{"type":"ping","data":{},"timestamp":1759997547585},"msg":"收到WebSocket客户端消息"}
+{"level":30,"time":1759997548391,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3j","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":59006},"msg":"incoming request"}
+{"level":30,"time":1759997548391,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3j","res":{"statusCode":200},"responseTime":0.4390000104904175,"msg":"request completed"}
+{"level":30,"time":1759997552397,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3k","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":59006},"msg":"incoming request"}
+{"level":30,"time":1759997552398,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3k","res":{"statusCode":200},"responseTime":1.2409000098705292,"msg":"request completed"}
+{"level":30,"time":1759997556390,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3l","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":59006},"msg":"incoming request"}
+{"level":30,"time":1759997556391,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3l","res":{"statusCode":200},"responseTime":0.40460002422332764,"msg":"request completed"}
+{"level":30,"time":1759997560388,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3m","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":59006},"msg":"incoming request"}
+{"level":30,"time":1759997560389,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3m","res":{"statusCode":200},"responseTime":0.41920000314712524,"msg":"request completed"}
+{"level":30,"time":1759997564383,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3n","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":59006},"msg":"incoming request"}
+{"level":30,"time":1759997564384,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3n","res":{"statusCode":200},"responseTime":0.5059000253677368,"msg":"request completed"}
+{"level":30,"time":1759997568390,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3o","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":59006},"msg":"incoming request"}
+{"level":30,"time":1759997568391,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3o","res":{"statusCode":200},"responseTime":0.41609999537467957,"msg":"request completed"}
+{"level":30,"time":1759997571165,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"WhatsApp authenticated"}
+{"level":30,"time":1759997572390,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3p","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":59006},"msg":"incoming request"}
+{"level":30,"time":1759997572391,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3p","res":{"statusCode":200},"responseTime":0.5024000108242035,"msg":"request completed"}
+{"level":30,"time":1759997576384,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3q","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":59006},"msg":"incoming request"}
+{"level":30,"time":1759997576385,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3q","res":{"statusCode":200},"responseTime":0.42410001158714294,"msg":"request completed"}
+{"level":30,"time":1759997580396,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3r","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":59006},"msg":"incoming request"}
+{"level":30,"time":1759997580396,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3r","res":{"statusCode":200},"responseTime":0.41260001063346863,"msg":"request completed"}
+{"level":30,"time":1759997584385,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3s","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":59006},"msg":"incoming request"}
+{"level":30,"time":1759997584385,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3s","res":{"statusCode":200},"responseTime":0.3407999873161316,"msg":"request completed"}
+{"level":30,"time":1759997587550,"pid":62128,"hostname":"DESKTOP-RSPVJHE","message":{"type":"ping","data":{},"timestamp":1759997587549},"msg":"收到WebSocket客户端消息"}
+{"level":30,"time":1759997588399,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3t","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":59006},"msg":"incoming request"}
+{"level":30,"time":1759997588399,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3t","res":{"statusCode":200},"responseTime":0.5606000125408173,"msg":"request completed"}
+{"level":30,"time":1759997590103,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3u","req":{"method":"GET","url":"/status","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":59006},"msg":"incoming request"}
+{"level":30,"time":1759997590105,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3v","req":{"method":"GET","url":"/threads","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997590107,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3u","res":{"statusCode":200},"responseTime":2.950300008058548,"msg":"request completed"}
+{"level":30,"time":1759997590118,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3v","res":{"statusCode":200},"responseTime":13.576299995183945,"msg":"request completed"}
+{"level":30,"time":1759997592105,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3w","req":{"method":"GET","url":"/status","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997592108,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3x","req":{"method":"GET","url":"/threads","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":59006},"msg":"incoming request"}
+{"level":30,"time":1759997592121,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3x","res":{"statusCode":200},"responseTime":13.330600023269653,"msg":"request completed"}
+{"level":30,"time":1759997592124,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3w","res":{"statusCode":200},"responseTime":18.86879998445511,"msg":"request completed"}
+{"level":30,"time":1759997592817,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3y","req":{"method":"GET","url":"/status","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997592819,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3z","req":{"method":"GET","url":"/threads","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":59006},"msg":"incoming request"}
+{"level":30,"time":1759997592822,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3y","res":{"statusCode":200},"responseTime":4.667499989271164,"msg":"request completed"}
+{"level":30,"time":1759997592838,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-3z","res":{"statusCode":200},"responseTime":18.79899999499321,"msg":"request completed"}
+{"level":30,"time":1759997593159,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-40","req":{"method":"POST","url":"/auth/login/start","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":59006},"msg":"incoming request"}
+{"level":30,"time":1759997593159,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Received login start request"}
+{"level":30,"time":1759997593159,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"=== Starting WhatsApp login process ==="}
+{"level":30,"time":1759997593159,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Destroying existing client before creating new one"}
+{"level":30,"time":1759997593884,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-41","req":{"method":"POST","url":"/auth/login/start","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":65519},"msg":"incoming request"}
+{"level":30,"time":1759997593884,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Received login start request"}
+{"level":30,"time":1759997593884,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"=== Starting WhatsApp login process ==="}
+{"level":30,"time":1759997593884,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"=== Step 1: Detecting browser path ==="}
+{"level":30,"time":1759997593884,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Starting browser detection..."}
+{"level":30,"time":1759997593884,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Current directory: D:\\projects\\whatsapp-web.js-main 2025.9.29 自动回复养号\\server\\app\\src"}
+{"level":30,"time":1759997593884,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Process CWD: D:\\projects\\whatsapp-web.js-main 2025.9.29 自动回复养号\\server"}
+{"level":30,"time":1759997593884,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Process resourcesPath: N/A"}
+{"level":30,"time":1759997593902,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Found Chromium from @puppeteer/browsers: D:\\projects\\whatsapp-web.js-main 2025.9.29 自动回复养号\\server\\chrome\\win64-141.0.7390.54\\chrome-win64\\chrome.exe"}
+{"level":30,"time":1759997593906,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Found Chromium from @puppeteer/browsers: D:\\projects\\whatsapp-web.js-main 2025.9.29 自动回复养号\\server\\chrome\\win64-141.0.7390.54\\chrome-win64\\chrome.exe"}
+{"level":30,"time":1759997593908,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Found 2 Puppeteer Chromium installation(s)"}
+{"level":30,"time":1759997593908,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Found Puppeteer Chromium at: D:\\projects\\whatsapp-web.js-main 2025.9.29 自动回复养号\\server\\chrome\\win64-141.0.7390.54\\chrome-win64\\chrome.exe"}
+{"level":30,"time":1759997593908,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"✓ Browser detected at: D:\\projects\\whatsapp-web.js-main 2025.9.29 自动回复养号\\server\\chrome\\win64-141.0.7390.54\\chrome-win64\\chrome.exe"}
+{"level":30,"time":1759997593908,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"=== Step 2: Creating WhatsApp client ==="}
+{"level":30,"time":1759997593908,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"=== Step 3: Registering event handlers ==="}
+{"level":30,"time":1759997593908,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"✓ Event handlers registered"}
+{"level":30,"time":1759997593908,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"=== Step 4: Initializing WhatsApp client (this may take 30-60 seconds) ==="}
+{"level":30,"time":1759997594203,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"WhatsApp client destroyed successfully"}
+{"level":30,"time":1759997594203,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"WhatsApp client state cleaned up"}
+{"level":30,"time":1759997594779,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-42","req":{"method":"POST","url":"/auth/login/start","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":58544},"msg":"incoming request"}
+{"level":30,"time":1759997594779,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Received login start request"}
+{"level":30,"time":1759997594779,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"=== Starting WhatsApp login process ==="}
+{"level":30,"time":1759997594779,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Destroying existing client before creating new one"}
+{"level":30,"time":1759997594849,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"WhatsApp client destroyed successfully"}
+{"level":30,"time":1759997594849,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"WhatsApp client state cleaned up"}
+{"level":50,"time":1759997594884,"pid":62128,"hostname":"DESKTOP-RSPVJHE","err":{"type":"Object","message":"Protocol error (Page.addScriptToEvaluateOnNewDocument): Session closed. Most likely the page has been closed.","stack":"Error: Protocol error (Page.addScriptToEvaluateOnNewDocument): Session closed. Most likely the page has been closed.\n    at CDPSessionImpl.send (D:\\projects\\whatsapp-web.js-main 2025.9.29 自动回复养号\\server\\node_modules\\puppeteer-core\\src\\common\\Connection.ts:379:9)\n    at CDPPage.evaluateOnNewDocument (D:\\projects\\whatsapp-web.js-main 2025.9.29 自动回复养号\\server\\node_modules\\puppeteer-core\\src\\common\\Page.ts:2437:24)\n    at Client.initialize (D:\\projects\\whatsapp-web.js-main 2025.9.29 自动回复养号\\server\\node_modules\\whatsapp-web.js\\src\\Client.js:328:20)\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)\n    at async WhatsAppService.startLogin (D:\\projects\\whatsapp-web.js-main 2025.9.29 自动回复养号\\server\\app\\src\\whatsapp-service.ts:595:9)\n    at async Object.<anonymous> (D:\\projects\\whatsapp-web.js-main 2025.9.29 自动回复养号\\server\\app\\src\\server.ts:338:7)","name":"Error"},"msg":"=== ✗ WhatsApp client initialization failed ==="}
+{"level":30,"time":1759997594885,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-41","res":{"statusCode":500},"responseTime":1000.464300006628,"msg":"request completed"}
+{"level":50,"time":1759997594884,"pid":62128,"hostname":"DESKTOP-RSPVJHE","err":{"type":"Error","message":"Protocol error (Page.addScriptToEvaluateOnNewDocument): Session closed. Most likely the page has been closed.","stack":"Error: Protocol error (Page.addScriptToEvaluateOnNewDocument): Session closed. Most likely the page has been closed.\n    at CDPSessionImpl.send (D:\\projects\\whatsapp-web.js-main 2025.9.29 自动回复养号\\server\\node_modules\\puppeteer-core\\src\\common\\Connection.ts:379:9)\n    at CDPPage.evaluateOnNewDocument (D:\\projects\\whatsapp-web.js-main 2025.9.29 自动回复养号\\server\\node_modules\\puppeteer-core\\src\\common\\Page.ts:2437:24)\n    at Client.initialize (D:\\projects\\whatsapp-web.js-main 2025.9.29 自动回复养号\\server\\node_modules\\whatsapp-web.js\\src\\Client.js:328:20)\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)\n    at async WhatsAppService.startLogin (D:\\projects\\whatsapp-web.js-main 2025.9.29 自动回复养号\\server\\app\\src\\whatsapp-service.ts:595:9)\n    at async Object.<anonymous> (D:\\projects\\whatsapp-web.js-main 2025.9.29 自动回复养号\\server\\app\\src\\server.ts:338:7)"},"msg":"Failed to start WhatsApp login process"}
+{"level":50,"time":1759997594884,"pid":62128,"hostname":"DESKTOP-RSPVJHE","error":{"name":"Error","message":"Protocol error (Page.addScriptToEvaluateOnNewDocument): Session closed. Most likely the page has been closed.","stack":"Error: Protocol error (Page.addScriptToEvaluateOnNewDocument): Session closed. Most likely the page has been closed.\n    at CDPSessionImpl.send (D:\\projects\\whatsapp-web.js-main 2025.9.29 自动回复养号\\server\\node_modules\\puppeteer-core\\src\\common\\Connection.ts:379:9)\n    at CDPPage.evaluateOnNewDocument (D:\\projects\\whatsapp-web.js-main 2025.9.29 自动回复养号\\server\\node_modules\\puppeteer-core\\src\\common\\Page.ts:2437:24)\n    at Client.initialize (D:\\projects\\whatsapp-web.js-main 2025.9.29 自动回复养号\\server\\node_modules\\whatsapp-web.js\\src\\Client.js:328:20)\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)\n    at async WhatsAppService.startLogin (D:\\projects\\whatsapp-web.js-main 2025.9.29 自动回复养号\\server\\app\\src\\whatsapp-service.ts:595:9)\n    at async Object.<anonymous> (D:\\projects\\whatsapp-web.js-main 2025.9.29 自动回复养号\\server\\app\\src\\server.ts:338:7)"},"msg":"Failed to start login process"}
+{"level":30,"time":1759997596216,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"=== Step 1: Detecting browser path ==="}
+{"level":30,"time":1759997596216,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Starting browser detection..."}
+{"level":30,"time":1759997596216,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Current directory: D:\\projects\\whatsapp-web.js-main 2025.9.29 自动回复养号\\server\\app\\src"}
+{"level":30,"time":1759997596216,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Process CWD: D:\\projects\\whatsapp-web.js-main 2025.9.29 自动回复养号\\server"}
+{"level":30,"time":1759997596216,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Process resourcesPath: N/A"}
+{"level":30,"time":1759997596218,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Found Chromium from @puppeteer/browsers: D:\\projects\\whatsapp-web.js-main 2025.9.29 自动回复养号\\server\\chrome\\win64-141.0.7390.54\\chrome-win64\\chrome.exe"}
+{"level":30,"time":1759997596218,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Found Chromium from @puppeteer/browsers: D:\\projects\\whatsapp-web.js-main 2025.9.29 自动回复养号\\server\\chrome\\win64-141.0.7390.54\\chrome-win64\\chrome.exe"}
+{"level":30,"time":1759997596220,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Found 2 Puppeteer Chromium installation(s)"}
+{"level":30,"time":1759997596220,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Found Puppeteer Chromium at: D:\\projects\\whatsapp-web.js-main 2025.9.29 自动回复养号\\server\\chrome\\win64-141.0.7390.54\\chrome-win64\\chrome.exe"}
+{"level":30,"time":1759997596220,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"✓ Browser detected at: D:\\projects\\whatsapp-web.js-main 2025.9.29 自动回复养号\\server\\chrome\\win64-141.0.7390.54\\chrome-win64\\chrome.exe"}
+{"level":30,"time":1759997596220,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"=== Step 2: Creating WhatsApp client ==="}
+{"level":30,"time":1759997596220,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"=== Step 3: Registering event handlers ==="}
+{"level":30,"time":1759997596220,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"✓ Event handlers registered"}
+{"level":30,"time":1759997596220,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"=== Step 4: Initializing WhatsApp client (this may take 30-60 seconds) ==="}
+{"level":30,"time":1759997596859,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"=== Step 1: Detecting browser path ==="}
+{"level":30,"time":1759997596859,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Starting browser detection..."}
+{"level":30,"time":1759997596859,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Current directory: D:\\projects\\whatsapp-web.js-main 2025.9.29 自动回复养号\\server\\app\\src"}
+{"level":30,"time":1759997596859,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Process CWD: D:\\projects\\whatsapp-web.js-main 2025.9.29 自动回复养号\\server"}
+{"level":30,"time":1759997596859,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Process resourcesPath: N/A"}
+{"level":30,"time":1759997596861,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Found Chromium from @puppeteer/browsers: D:\\projects\\whatsapp-web.js-main 2025.9.29 自动回复养号\\server\\chrome\\win64-141.0.7390.54\\chrome-win64\\chrome.exe"}
+{"level":30,"time":1759997596862,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Found Chromium from @puppeteer/browsers: D:\\projects\\whatsapp-web.js-main 2025.9.29 自动回复养号\\server\\chrome\\win64-141.0.7390.54\\chrome-win64\\chrome.exe"}
+{"level":30,"time":1759997596864,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Found 2 Puppeteer Chromium installation(s)"}
+{"level":30,"time":1759997596864,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Found Puppeteer Chromium at: D:\\projects\\whatsapp-web.js-main 2025.9.29 自动回复养号\\server\\chrome\\win64-141.0.7390.54\\chrome-win64\\chrome.exe"}
+{"level":30,"time":1759997596864,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"✓ Browser detected at: D:\\projects\\whatsapp-web.js-main 2025.9.29 自动回复养号\\server\\chrome\\win64-141.0.7390.54\\chrome-win64\\chrome.exe"}
+{"level":30,"time":1759997596864,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"=== Step 2: Creating WhatsApp client ==="}
+{"level":30,"time":1759997596865,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"=== Step 3: Registering event handlers ==="}
+{"level":30,"time":1759997596865,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"✓ Event handlers registered"}
+{"level":30,"time":1759997596865,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"=== Step 4: Initializing WhatsApp client (this may take 30-60 seconds) ==="}
+{"level":50,"time":1759997596944,"pid":62128,"hostname":"DESKTOP-RSPVJHE","err":{"type":"Object","message":"Failed to launch the browser process!\n\n\nTROUBLESHOOTING: https://github.com/puppeteer/puppeteer/blob/main/docs/troubleshooting.md\n","stack":"Error: Failed to launch the browser process!\n\n\nTROUBLESHOOTING: https://github.com/puppeteer/puppeteer/blob/main/docs/troubleshooting.md\n\n    at onClose (D:\\projects\\whatsapp-web.js-main 2025.9.29 自动回复养号\\server\\node_modules\\puppeteer-core\\src\\node\\BrowserRunner.ts:327:9)\n    at ChildProcess.<anonymous> (D:\\projects\\whatsapp-web.js-main 2025.9.29 自动回复养号\\server\\node_modules\\puppeteer-core\\src\\node\\BrowserRunner.ts:316:16)\n    at ChildProcess.emit (node:events:536:35)\n    at ChildProcess._handle.onexit (node:internal/child_process:293:12)","name":"Error"},"msg":"=== ✗ WhatsApp client initialization failed ==="}
+{"level":30,"time":1759997596945,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-42","res":{"statusCode":500},"responseTime":2165.6141999959946,"msg":"request completed"}
+{"level":50,"time":1759997596944,"pid":62128,"hostname":"DESKTOP-RSPVJHE","err":{"type":"Error","message":"Failed to launch the browser process!\n\n\nTROUBLESHOOTING: https://github.com/puppeteer/puppeteer/blob/main/docs/troubleshooting.md\n","stack":"Error: Failed to launch the browser process!\n\n\nTROUBLESHOOTING: https://github.com/puppeteer/puppeteer/blob/main/docs/troubleshooting.md\n\n    at onClose (D:\\projects\\whatsapp-web.js-main 2025.9.29 自动回复养号\\server\\node_modules\\puppeteer-core\\src\\node\\BrowserRunner.ts:327:9)\n    at ChildProcess.<anonymous> (D:\\projects\\whatsapp-web.js-main 2025.9.29 自动回复养号\\server\\node_modules\\puppeteer-core\\src\\node\\BrowserRunner.ts:316:16)\n    at ChildProcess.emit (node:events:536:35)\n    at ChildProcess._handle.onexit (node:internal/child_process:293:12)"},"msg":"Failed to start WhatsApp login process"}
+{"level":50,"time":1759997596944,"pid":62128,"hostname":"DESKTOP-RSPVJHE","error":{"name":"Error","message":"Failed to launch the browser process!\n\n\nTROUBLESHOOTING: https://github.com/puppeteer/puppeteer/blob/main/docs/troubleshooting.md\n","stack":"Error: Failed to launch the browser process!\n\n\nTROUBLESHOOTING: https://github.com/puppeteer/puppeteer/blob/main/docs/troubleshooting.md\n\n    at onClose (D:\\projects\\whatsapp-web.js-main 2025.9.29 自动回复养号\\server\\node_modules\\puppeteer-core\\src\\node\\BrowserRunner.ts:327:9)\n    at ChildProcess.<anonymous> (D:\\projects\\whatsapp-web.js-main 2025.9.29 自动回复养号\\server\\node_modules\\puppeteer-core\\src\\node\\BrowserRunner.ts:316:16)\n    at ChildProcess.emit (node:events:536:35)\n    at ChildProcess._handle.onexit (node:internal/child_process:293:12)"},"msg":"Failed to start login process"}
+{"level":30,"time":1759997600912,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"=== ✓ WhatsApp client initialization completed successfully ==="}
+{"level":30,"time":1759997600912,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-40","res":{"statusCode":200},"responseTime":7753.784799993038,"msg":"request completed"}
+{"level":30,"time":1759997600912,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"Login process started successfully"}
+{"level":30,"time":1759997600924,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-43","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":59006},"msg":"incoming request"}
+{"level":30,"time":1759997600925,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-43","res":{"statusCode":200},"responseTime":0.40059998631477356,"msg":"request completed"}
+{"level":30,"time":1759997601373,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"WhatsApp authenticated"}
+{"level":30,"time":1759997601543,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"WhatsApp client ready"}
+{"level":30,"time":1759997602612,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"WhatsApp authenticated"}
+{"level":30,"time":1759997602613,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"WhatsApp authenticated"}
+{"level":30,"time":1759997602656,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"WhatsApp client ready"}
+{"level":30,"time":1759997602656,"pid":62128,"hostname":"DESKTOP-RSPVJHE","msg":"WhatsApp client ready"}
+{"level":40,"time":1759997603023,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reason":"LOGOUT","msg":"WhatsApp disconnected"}
+{"level":30,"time":1759997604940,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-44","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":59006},"msg":"incoming request"}
+{"level":30,"time":1759997604941,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-44","res":{"statusCode":200},"responseTime":0.6029999852180481,"msg":"request completed"}
+{"level":30,"time":1759997607610,"pid":62128,"hostname":"DESKTOP-RSPVJHE","message":{"type":"ping","data":{},"timestamp":1759997607573},"msg":"收到WebSocket客户端消息"}
+{"level":30,"time":1759997608936,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-45","req":{"method":"GET","url":"/auth/qr","host":"localhost:4000","remoteAddress":"127.0.0.1","remotePort":59006},"msg":"incoming request"}
+{"level":30,"time":1759997608936,"pid":62128,"hostname":"DESKTOP-RSPVJHE","reqId":"req-45","res":{"statusCode":200},"responseTime":0.5940000116825104,"msg":"request completed"}
+D:\projects\whatsapp-web.js-main 2025.9.29 自动回复养号\server\node_modules\whatsapp-web.js\src\authStrategies\LocalAuth.js:51
+                    throw new Error(e);
+                          ^
+
+Error: Error: EBUSY: resource busy or locked, unlink 'D:\projects\whatsapp-web.js-main 2025.9.29 自动回复养号\server\.session\session-whatsapp-automation\first_party_sets.db'
+    at D:\projects\whatsapp-web.js-main 2025.9.29 自动回复养号\server\node_modules\whatsapp-web.js\src\authStrategies\LocalAuth.js:51:27
+    at async LocalAuth.logout (D:\projects\whatsapp-web.js-main 2025.9.29 自动回复养号\server\node_modules\whatsapp-web.js\src\authStrategies\LocalAuth.js:49:13)
+    at async D:\projects\whatsapp-web.js-main 2025.9.29 自动回复养号\server\node_modules\whatsapp-web.js\src\Client.js:351:17
+
+Node.js v20.19.2

@@ -7,6 +7,7 @@ export interface ThreadContact {
   id: string;
   phoneE164: string;
   name: string | null;
+  avatarUrl?: string | null;
 }
 
 export interface ThreadWithMessages extends Thread {
@@ -18,11 +19,18 @@ export interface ThreadListItem extends Thread {
   contact: ThreadContact;
   messagesCount: number;
   latestMessageAt: Date | null;
+  lastMessage?: {
+    id: string;
+    text: string | null;
+    direction: string;
+    createdAt: Date;
+  } | null;
 }
 
 type ThreadRecord = Thread & {
   contact: ThreadContact;
   _count: { messages: number };
+  messages?: Message[];
 };
 
 export async function getThreadById(id: string): Promise<Thread> {
@@ -75,6 +83,10 @@ export async function listThreads(): Promise<ThreadListItem[]> {
       _count: {
         select: { messages: true },
       },
+      messages: {
+        orderBy: { createdAt: 'desc' },
+        take: 1, // 只获取最后一条消息
+      },
     },
     orderBy: [{ updatedAt: 'desc' }],
   });
@@ -95,6 +107,10 @@ export async function getThreadSummary(threadId: string): Promise<ThreadListItem
       },
       _count: {
         select: { messages: true },
+      },
+      messages: {
+        orderBy: { createdAt: 'desc' },
+        take: 1, // 只获取最后一条消息
       },
     },
   });
@@ -132,12 +148,20 @@ export async function getThreadWithMessages(threadId: string, limit = 50): Promi
 }
 
 function mapToListItem(thread: ThreadRecord): ThreadListItem {
-  const { _count, ...rest } = thread;
+  const { _count, messages, ...rest } = thread;
   const latestMessageAt = computeLatestMessageAt(rest);
+  const lastMessage = messages && messages.length > 0 ? {
+    id: messages[0].id,
+    text: messages[0].text,
+    direction: messages[0].direction,
+    createdAt: messages[0].createdAt,
+  } : null;
+  
   return {
     ...rest,
     messagesCount: _count.messages,
     latestMessageAt,
+    lastMessage,
   };
 }
 

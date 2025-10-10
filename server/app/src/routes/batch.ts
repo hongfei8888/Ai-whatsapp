@@ -236,6 +236,62 @@ export async function batchRoutes(fastify: FastifyInstance) {
     }
   });
 
+  // 获取批量操作统计（必须在 :batchId 之前）
+  fastify.get('/batch/stats', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const query = batchQuerySchema.parse(request.query);
+      
+      const filters = {
+        type: query.type,
+        status: query.status,
+        createdAfter: query.createdAfter,
+      };
+      
+      const batches = await BatchService.getBatchList({ ...filters, limit: 1000 });
+      
+      const stats = {
+        total: batches.length,
+        byType: {} as Record<string, number>,
+        byStatus: {} as Record<string, number>,
+        successRate: 0,
+        totalProcessed: 0,
+        totalSuccess: 0,
+        totalFailed: 0,
+      };
+      
+      batches.forEach(batch => {
+        // 按类型统计
+        stats.byType[batch.type] = (stats.byType[batch.type] || 0) + 1;
+        
+        // 按状态统计
+        stats.byStatus[batch.status] = (stats.byStatus[batch.status] || 0) + 1;
+        
+        // 累计处理数量
+        stats.totalProcessed += batch.processedCount;
+        stats.totalSuccess += batch.successCount;
+        stats.totalFailed += batch.failedCount;
+      });
+      
+      // 计算成功率
+      if (stats.totalProcessed > 0) {
+        stats.successRate = Math.round((stats.totalSuccess / stats.totalProcessed) * 100);
+      }
+      
+      return reply.send({
+        ok: true,
+        data: stats,
+      });
+    } catch (error) {
+      logger.error('Failed to get batch stats', { error } as any);
+      
+      return reply.code(500).send({
+        ok: false,
+        code: 'INTERNAL_ERROR',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
   // 获取批量操作列表
   fastify.get('/batch', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -289,62 +345,6 @@ export async function batchRoutes(fastify: FastifyInstance) {
           message: 'Batch operation not found',
         });
       }
-      
-      return reply.code(500).send({
-        ok: false,
-        code: 'INTERNAL_ERROR',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      });
-    }
-  });
-
-  // 获取批量操作统计
-  fastify.get('/batch/stats', async (request: FastifyRequest, reply: FastifyReply) => {
-    try {
-      const query = batchQuerySchema.parse(request.query);
-      
-      const filters = {
-        type: query.type,
-        status: query.status,
-        createdAfter: query.createdAfter,
-      };
-      
-      const batches = await BatchService.getBatchList({ ...filters, limit: 1000 });
-      
-      const stats = {
-        total: batches.length,
-        byType: {} as Record<string, number>,
-        byStatus: {} as Record<string, number>,
-        successRate: 0,
-        totalProcessed: 0,
-        totalSuccess: 0,
-        totalFailed: 0,
-      };
-      
-      batches.forEach(batch => {
-        // 按类型统计
-        stats.byType[batch.type] = (stats.byType[batch.type] || 0) + 1;
-        
-        // 按状态统计
-        stats.byStatus[batch.status] = (stats.byStatus[batch.status] || 0) + 1;
-        
-        // 累计处理数量
-        stats.totalProcessed += batch.processedCount;
-        stats.totalSuccess += batch.successCount;
-        stats.totalFailed += batch.failedCount;
-      });
-      
-      // 计算成功率
-      if (stats.totalProcessed > 0) {
-        stats.successRate = Math.round((stats.totalSuccess / stats.totalProcessed) * 100);
-      }
-      
-      return reply.send({
-        ok: true,
-        data: stats,
-      });
-    } catch (error) {
-      logger.error('Failed to get batch stats', { error } as any);
       
       return reply.code(500).send({
         ok: false,
