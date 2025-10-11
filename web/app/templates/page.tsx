@@ -339,7 +339,7 @@ export default function TemplatesPage() {
   // 提取模版中的变量
   const extractVariables = (content: string): string[] => {
     const regex = /\{\{(\w+)\}\}/g;
-    const matches = [];
+    const matches: string[] = [];
     let match;
     while ((match = regex.exec(content)) !== null) {
       if (!matches.includes(match[1])) {

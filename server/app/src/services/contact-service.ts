@@ -20,8 +20,9 @@ export interface ContactView extends Contact {
 }
 
 
-export async function createContact(input: CreateContactInput): Promise<Contact> {
-  const data: Prisma.ContactCreateInput = {
+export async function createContact(accountId: string, input: CreateContactInput): Promise<Contact> {
+  const data: Prisma.ContactUncheckedCreateInput = {
+    accountId,
     phoneE164: normalizeE164(input.phoneE164),
     name: input.name?.trim() || null,
     consent: input.consent ?? true,
@@ -37,30 +38,58 @@ export async function createContact(input: CreateContactInput): Promise<Contact>
   }
 }
 
-export async function listContacts(): Promise<ContactView[]> {
+export async function listContacts(accountId: string): Promise<ContactView[]> {
   const contacts = await prisma.contact.findMany({
+    where: { accountId },
     orderBy: { createdAt: 'desc' },
   });
 
   return contacts;
 }
 
-export async function getContactById(id: string): Promise<Contact> {
-  const contact = await prisma.contact.findUnique({ where: { id } });
+export async function getContactById(accountId: string, id: string): Promise<Contact> {
+  const contact = await prisma.contact.findFirst({ 
+    where: { accountId, id } 
+  });
   if (!contact) {
     throw new ContactNotFoundError();
   }
   return contact;
 }
 
-export async function getContactByPhone(phoneE164: string): Promise<Contact | null> {
-  return prisma.contact.findUnique({ where: { phoneE164 } });
+export async function getContactByPhone(accountId: string, phoneE164: string): Promise<Contact | null> {
+  return prisma.contact.findFirst({ 
+    where: { 
+      accountId, 
+      phoneE164 
+    } 
+  });
 }
 
+export async function updateContact(
+  accountId: string,
+  id: string,
+  input: { name?: string; tags?: string[]; consent?: boolean }
+): Promise<Contact> {
+  const contact = await prisma.contact.findFirst({ where: { accountId, id } });
+  if (!contact) {
+    throw new ContactNotFoundError();
+  }
 
-export async function deleteContact(id: string): Promise<void> {
+  const data: Prisma.ContactUpdateInput = {};
+  if (input.name !== undefined) data.name = input.name.trim() || null;
+  if (input.tags !== undefined) data.tags = input.tags;
+  if (input.consent !== undefined) data.consent = input.consent;
+
+  return await prisma.contact.update({
+    where: { id },
+    data,
+  });
+}
+
+export async function deleteContact(accountId: string, id: string): Promise<void> {
   try {
-    const contact = await prisma.contact.findUnique({ where: { id } });
+    const contact = await prisma.contact.findFirst({ where: { accountId, id } });
     if (!contact) {
       throw new ContactNotFoundError();
     }
@@ -70,6 +99,7 @@ export async function deleteContact(id: string): Promise<void> {
       // 1. 删除相关的消息记录
       await tx.message.deleteMany({
         where: { 
+          accountId,
           thread: { 
             contactId: id 
           } 
@@ -78,7 +108,7 @@ export async function deleteContact(id: string): Promise<void> {
 
       // 2. 删除相关的对话线程
       await tx.thread.deleteMany({
-        where: { contactId: id },
+        where: { accountId, contactId: id },
       });
 
       // 3. 删除相关的活动接收者记录

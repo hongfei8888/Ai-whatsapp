@@ -26,8 +26,9 @@ export async function batchRoutes(fastify: FastifyInstance) {
   // 批量导入联系人
   fastify.post('/batch/import', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
+      const accountId = request.accountId!;
       const config = batchImportSchema.parse(request.body);
-      const batch = await BatchService.importContacts(config);
+      const batch = await BatchService.importContacts(accountId, config);
       
       logger.info('Batch import started', { 
         batchId: batch.id, 
@@ -61,8 +62,9 @@ export async function batchRoutes(fastify: FastifyInstance) {
   // 批量发送消息
   fastify.post('/batch/send', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
+      const accountId = request.accountId!;
       const config = batchSendSchema.parse(request.body);
-      const batch = await BatchService.sendBatchMessages(config);
+      const batch = await BatchService.sendBatchMessages(accountId, config, fastify.accountManager);
       
       logger.info('Batch send started', { 
         batchId: batch.id, 
@@ -96,8 +98,9 @@ export async function batchRoutes(fastify: FastifyInstance) {
   // 批量标签管理
   fastify.post('/batch/tags', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
+      const accountId = request.accountId!;
       const config = batchTagSchema.parse(request.body);
-      const batch = await BatchService.manageTags(config);
+      const batch = await BatchService.manageTags(accountId, config);
       
       logger.info('Batch tags started', { 
         batchId: batch.id, 
@@ -132,11 +135,12 @@ export async function batchRoutes(fastify: FastifyInstance) {
   // 批量删除联系人
   fastify.post('/batch/delete', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
+      const accountId = request.accountId!;
       const body = z.object({
         contactIds: z.array(z.string()).min(1),
       }).parse(request.body);
       
-      const batch = await BatchService.deleteContacts(body.contactIds);
+      const batch = await BatchService.deleteContacts(accountId, body.contactIds);
       
       logger.info('Batch delete started', { 
         batchId: batch.id, 

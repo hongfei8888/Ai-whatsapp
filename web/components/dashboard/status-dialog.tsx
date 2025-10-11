@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
 import { api } from '@/lib/api';
+import { useAccount } from '@/lib/account-context';
 import type { StatusPayload } from '@/lib/types';
 
 interface StatusDialogProps {
@@ -23,6 +24,7 @@ interface StatusDialogProps {
 }
 
 export function StatusDialog({ open, onOpenChange }: StatusDialogProps) {
+  const { currentAccountId } = useAccount();
   const [status, setStatus] = useState<StatusPayload | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,7 +43,11 @@ export function StatusDialog({ open, onOpenChange }: StatusDialogProps) {
     setError(null);
     
     try {
-      const statusData = await api.getStatus();
+      if (!currentAccountId) {
+        setError('请先选择账号');
+        return;
+      }
+      const statusData = await api.accounts.getStatus(currentAccountId);
       setStatus(statusData);
     } catch (err) {
       setError(err instanceof Error ? err.message : '加载状态失败');
@@ -92,7 +98,9 @@ export function StatusDialog({ open, onOpenChange }: StatusDialogProps) {
   const ConnectionIcon = connectionStatus.icon;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={() => {
+      // 🔒 禁止通过遮罩层或ESC键关闭 - 只能通过关闭按钮
+    }}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center gap-3">

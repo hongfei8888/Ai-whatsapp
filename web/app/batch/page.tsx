@@ -48,7 +48,7 @@ const styles = {
     fontWeight: '500' as const,
     color: WhatsAppColors.textSecondary,
     borderBottomWidth: '2px',
-    borderBottomStyle: 'solid',
+    borderBottomStyle: 'solid' as const,
     borderBottomColor: 'transparent',
     transition: 'color 0.2s, border-color 0.2s',
   },
@@ -374,18 +374,32 @@ export default function BatchPage() {
   };
 
   const handleBatchSend = async () => {
+    console.log('🚀 handleBatchSend 被调用');
+    console.log('📊 当前状态:', {
+      sendMethod,
+      selectedContacts: selectedContacts.length,
+      messageContent: messageContent.substring(0, 50),
+      selectedTemplate: selectedTemplate?.id,
+      isProcessing
+    });
+
     if (sendMethod === 'manual' && !phoneList.trim()) {
+      console.warn('❌ 检查失败: 手机号列表为空');
       alert('请输入手机号列表');
       return;
     }
     if (sendMethod === 'contacts' && selectedContacts.length === 0) {
+      console.warn('❌ 检查失败: 未选择联系人');
       alert('请选择联系人');
       return;
     }
     if (!messageContent.trim() && !selectedTemplate) {
+      console.warn('❌ 检查失败: 消息内容为空');
       alert('请输入消息内容或选择模版');
       return;
     }
+    
+    console.log('✅ 所有检查通过，准备发送...');
 
     // 验证定时发送
     if (enableSchedule) {

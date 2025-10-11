@@ -208,7 +208,7 @@ export default function KnowledgeSelector({
         setKnowledgeItems(data.data);
         
         // 提取所有分类
-        const allCategories = Array.from(new Set(data.data.map((item: KnowledgeItem) => item.category)));
+        const allCategories = Array.from(new Set(data.data.map((item: KnowledgeItem) => item.category))) as string[];
         setCategories(allCategories);
       }
     } catch (error) {

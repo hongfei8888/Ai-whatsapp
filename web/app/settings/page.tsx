@@ -46,7 +46,7 @@ const styles = {
     fontWeight: '500' as const,
     color: WhatsAppColors.textSecondary,
     borderBottomWidth: '3px',
-    borderBottomStyle: 'solid',
+    borderBottomStyle: 'solid' as const,
     borderBottomColor: 'transparent',
     transition: 'all 0.2s',
     whiteSpace: 'nowrap' as const,
@@ -281,8 +281,13 @@ export default function SettingsPage() {
   };
 
   const loadWhatsappStatus = async () => {
+    if (!currentAccountId) {
+      console.warn('未选择账号，无法加载WhatsApp状态');
+      return;
+    }
+    
     try {
-      const data = await api.getStatus();
+      const data = await api.accounts.getStatus(currentAccountId);
       setWhatsappStatus(data);
     } catch (error) {
       console.error('加载WhatsApp状态失败:', error);
@@ -295,7 +300,7 @@ export default function SettingsPage() {
       const [overviewData, messagesData, batchData, translationData, knowledgeData, storageData] = await Promise.all([
         api.stats.overview(),
         api.stats.messages(),
-        api.batch.stats(),
+        api.batch.getStats(),
         api.translation.getStats(),
         api.knowledge.getStats(),
         api.data.storageInfo(),
@@ -342,9 +347,9 @@ export default function SettingsPage() {
 
   const handleTestAi = async () => {
     try {
-      const result = await api.testAiReply({
+      const result = await api.testAi({
         user: '测试消息',
-        context: []
+        context: '这是一个测试对话'
       });
       alert(`AI测试回复：\n\n${result.reply}`);
     } catch (error) {
@@ -791,7 +796,7 @@ export default function SettingsPage() {
               title="总翻译次数"
               value={translationStats.totalTranslations || 0}
               icon="🌐"
-              color={WhatsAppColors.info}
+              color={WhatsAppColors.accent}
             />
             <StatCard
               title="总使用次数"
@@ -880,7 +885,7 @@ export default function SettingsPage() {
               value={stats.messages?.total || 0}
               subtitle={`今日：${stats.messages?.today || 0}`}
               icon="💬"
-              color={WhatsAppColors.info}
+              color={WhatsAppColors.accent}
             />
             <StatCard
               title="模板总数"
@@ -926,7 +931,7 @@ export default function SettingsPage() {
                   title="已接收"
                   value={messageStats.today?.received || 0}
                   icon="📥"
-                  color={WhatsAppColors.info}
+                  color={WhatsAppColors.accent}
                 />
                 <StatCard
                   title="成功率"
@@ -1128,7 +1133,7 @@ export default function SettingsPage() {
                     {whatsappStatus.connected ? (
                       <span style={{ color: WhatsAppColors.success, fontWeight: '600' }}>✓ 已连接</span>
                     ) : (
-                      <span style={{ color: WhatsAppColors.danger, fontWeight: '600' }}>✗ 未连接</span>
+                      <span style={{ color: WhatsAppColors.error, fontWeight: '600' }}>✗ 未连接</span>
                     )}
                   </div>
                 </div>

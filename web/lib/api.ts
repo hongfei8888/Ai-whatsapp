@@ -48,6 +48,19 @@ async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
     headers.set('Authorization', `Bearer ${API_TOKEN}`);
   }
 
+  // 🔥 自动添加当前账号 ID 请求头（如果存在且不是账号管理路由）
+  if (!path.startsWith('/accounts') && !headers.has('X-Account-Id')) {
+    try {
+      const currentAccountId = localStorage.getItem('whatsapp_current_account_id');
+      if (currentAccountId) {
+        headers.set('X-Account-Id', currentAccountId);
+      }
+    } catch (error) {
+      // localStorage 不可用时忽略错误（如 SSR）
+      console.warn('Cannot access localStorage:', error);
+    }
+  }
+
   let response: Response;
   try {
     response = await fetch(url, {
@@ -86,19 +99,109 @@ async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 export const api = {
-  getStatus: () => apiFetch<StatusPayload>('/status'),
-  getContacts: () => apiFetch<any>('/contacts'),
-  getContact: (id: string) => apiFetch<Contact>(`/contacts/${id}`),
-  createContact: (payload: { phoneE164: string; name?: string }) =>
-    apiFetch<Contact>('/contacts', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }),
-  updateContact: (id: string, payload: { name?: string; tags?: string[] }) =>
-    apiFetch<Contact>(`/contacts/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(payload),
-    }),
+  // ==================== 账号管理 API ====================
+  accounts: {
+    // 获取所有账号列表
+    list: () =>
+      apiFetch<any[]>('/accounts'),
+    
+    // 获取单个账号详情
+    get: (accountId: string) =>
+      apiFetch<any>(`/accounts/${accountId}`),
+    
+    // 创建新账号
+    create: (name: string) =>
+      apiFetch<any>('/accounts', {
+        method: 'POST',
+        body: JSON.stringify({ name }),
+      }),
+    
+    // 更新账号信息
+    update: (accountId: string, data: { name?: string; isActive?: boolean }) =>
+      apiFetch<any>(`/accounts/${accountId}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }),
+    
+    // 删除账号
+    delete: (accountId: string) =>
+      apiFetch<{ message: string }>(`/accounts/${accountId}`, {
+        method: 'DELETE',
+      }),
+    
+    // 启动账号（开始登录）
+    start: (accountId: string) =>
+      apiFetch<{ message: string }>(`/accounts/${accountId}/start`, {
+        method: 'POST',
+      }),
+    
+    // 停止账号
+    stop: (accountId: string) =>
+      apiFetch<{ message: string }>(`/accounts/${accountId}/stop`, {
+        method: 'POST',
+      }),
+    
+    // 获取账号状态
+    getStatus: (accountId: string) =>
+      apiFetch<any>(`/accounts/${accountId}/status`),
+    
+    // 获取账号二维码
+    getQRCode: (accountId: string) =>
+      apiFetch<{ qr: string | null }>(`/accounts/${accountId}/qr`),
+    
+    // 同步账号联系人
+    syncContacts: (accountId: string) =>
+      apiFetch<any>(`/accounts/${accountId}/sync-contacts`, {
+        method: 'POST',
+      }),
+    
+    // 获取聚合统计
+    getAggregateStats: () =>
+      apiFetch<any>('/accounts/aggregate/stats'),
+    
+    // 获取健康监控
+    getAggregateHealth: () =>
+      apiFetch<any>('/accounts/aggregate/health'),
+  },
+
+  // ❌ 废弃：全局status API（改用 api.accounts.getStatus）
+  // getStatus: () => apiFetch<StatusPayload>('/status'),
+  
+  // 📞 联系人管理API（多账号架构）
+  contacts: {
+    list: () => apiFetch<{ ok: boolean; data: Contact[] }>('/contacts'),
+    get: (contactId: string) => apiFetch<{ ok: boolean; data: Contact }>(`/contacts/${contactId}`),
+    create: (payload: { phoneE164: string; name?: string; consent?: boolean }) =>
+      apiFetch<{ ok: boolean; data: Contact }>('/contacts', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
+    update: (contactId: string, payload: { name?: string; tags?: string[]; consent?: boolean }) =>
+      apiFetch<{ ok: boolean; data: Contact }>(`/contacts/${contactId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+      }),
+    delete: (contactId: string) =>
+      apiFetch<{ ok: boolean; message: string }>(`/contacts/${contactId}`, { 
+        method: 'DELETE' 
+      }),
+    // 🔐 验证号码是否是有效的 WhatsApp 联系人
+    verify: (phoneE164: string) =>
+      apiFetch<{
+        isValid: boolean;
+        existsInDb?: boolean;
+        existsInWhatsApp?: boolean;
+        contactInfo?: {
+          id?: string;
+          phoneE164: string;
+          name?: string | null;
+          profilePicUrl?: string | null;
+        } | null;
+      }>('/contacts/verify', {
+        method: 'POST',
+        body: JSON.stringify({ phoneE164 }),
+      }),
+  },
   getContactStats: (id: string) =>
     apiFetch<{ messageCount: number; lastContactAt: string | null; threadCount: number }>(`/contacts/${id}/stats`),
   sendOutreach: (id: string, payload: { content: string }) =>
@@ -213,27 +316,17 @@ export const api = {
     }),
   deleteTemplateCategory: (id: string) =>
     apiFetch<{ message: string }>(`/templates/categories/${id}`, { method: 'DELETE' }),
-  startLogin: () =>
-    apiFetch<{ message: string }>('/auth/login/start', { method: 'POST' }),
-  getQRCode: () =>
-    apiFetch<{ qr: string | null; state: string; status: string }>('/auth/qr'),
+  
+  // 🔥 已废弃: 使用 api.auth.startLogin() 或 api.accounts.start(accountId)
+  // 🔥 已废弃: 使用 api.auth.getQRCode() 或 api.accounts.getQRCode(accountId)
+  
   addContact: (contact: { phoneE164: string; name?: string }) =>
     apiFetch<{ message: string }>('/contacts', {
       method: 'POST',
       body: JSON.stringify(contact),
     }),
-  deleteContact: (id: string) =>
-    apiFetch<{ message: string }>(`/contacts/${id}`, { method: 'DELETE' }),
-  
-  // WhatsApp联系人功能
-  getWhatsAppContacts: () =>
-    apiFetch<{ contacts: any[]; count: number }>('/contacts/whatsapp'),
-  
-  syncWhatsAppContacts: () =>
-    apiFetch<{ message: string; result: { added: number; updated: number; total: number } }>('/contacts/sync-whatsapp', {
-      method: 'POST',
-      body: JSON.stringify({}), // 添加空的JSON体
-    }),
+  // ❌ 废弃：旧的deleteContact（改用 api.contacts.delete）
+  // deleteContact: (id: string) => apiFetch<{ message: string }>(`/contacts/${id}`, { method: 'DELETE' }),
   getSettings: () =>
     apiFetch<any>('/settings'),
   saveSettings: (settings: any) =>
@@ -602,6 +695,18 @@ export const api = {
     overview: () => apiFetch<any>('/stats/overview'),
     messages: () => apiFetch<any>('/stats/messages'),
     activity: () => apiFetch<any>('/stats/activity'),
+    topGroups: (params?: { startDate?: string; endDate?: string }) =>
+      apiFetch<any>(`/stats/top-groups${params ? '?' + new URLSearchParams(Object.entries(params).filter(([_, v]) => v !== undefined).map(([k, v]) => [k, String(v)])).toString() : ''}`),
+    topContacts: (params?: { startDate?: string; endDate?: string }) =>
+      apiFetch<any>(`/stats/top-contacts${params ? '?' + new URLSearchParams(Object.entries(params).filter(([_, v]) => v !== undefined).map(([k, v]) => [k, String(v)])).toString() : ''}`),
+    topTemplates: (params?: { startDate?: string; endDate?: string }) =>
+      apiFetch<any>(`/stats/top-templates${params ? '?' + new URLSearchParams(Object.entries(params).filter(([_, v]) => v !== undefined).map(([k, v]) => [k, String(v)])).toString() : ''}`),
+    topResponseTimes: (params?: { startDate?: string; endDate?: string }) =>
+      apiFetch<any>(`/stats/top-response-times${params ? '?' + new URLSearchParams(Object.entries(params).filter(([_, v]) => v !== undefined).map(([k, v]) => [k, String(v)])).toString() : ''}`),
+    topBatchSuccess: (params?: { startDate?: string; endDate?: string }) =>
+      apiFetch<any>(`/stats/top-batch-success${params ? '?' + new URLSearchParams(Object.entries(params).filter(([_, v]) => v !== undefined).map(([k, v]) => [k, String(v)])).toString() : ''}`),
+    heatmap: (params?: { startDate?: string; endDate?: string }) =>
+      apiFetch<any>(`/stats/heatmap${params ? '?' + new URLSearchParams(Object.entries(params).filter(([_, v]) => v !== undefined).map(([k, v]) => [k, String(v)])).toString() : ''}`),
   },
 
   // 数据管理 API
@@ -669,6 +774,16 @@ export const api = {
         xhr.open('POST', `${API_BASE_URL}/media/upload`);
         if (API_TOKEN) {
           xhr.setRequestHeader('Authorization', `Bearer ${API_TOKEN}`);
+        }
+        
+        // 🔥 添加账号 ID 头部（与 apiFetch 保持一致）
+        try {
+          const currentAccountId = localStorage.getItem('whatsapp_current_account_id');
+          if (currentAccountId) {
+            xhr.setRequestHeader('X-Account-Id', currentAccountId);
+          }
+        } catch (error) {
+          console.warn('Cannot access localStorage:', error);
         }
         
         // 设置超时（30分钟）
@@ -787,6 +902,240 @@ export const api = {
       
       return apiFetch<any>(`/threads/${id}/messages?${params.toString()}`);
     },
+  },
+
+  // ==================== 群组管理（社群营销） ====================
+  groups: {
+    // 批量进群
+    joinBatch: (data: {
+      title: string;
+      inviteLinks: string[];
+      config?: {
+        delayMin?: number;
+        delayMax?: number;
+        autoGreet?: boolean;
+        greetMessage?: string;
+      };
+    }) =>
+      apiFetch<any>('/groups/join-batch', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+
+    getJoinTaskStatus: (taskId: string) =>
+      apiFetch<any>(`/groups/join-batch/${taskId}`),
+
+    listJoinTasks: (filters?: {
+      status?: string;
+      limit?: number;
+      offset?: number;
+    }) => {
+      const params = new URLSearchParams();
+      if (filters?.status) params.append('status', filters.status);
+      if (filters?.limit) params.append('limit', filters.limit.toString());
+      if (filters?.offset) params.append('offset', filters.offset.toString());
+
+      const queryString = params.toString();
+      return apiFetch<{ tasks: any[]; total: number }>(
+        `/groups/join-batch${queryString ? `?${queryString}` : ''}`
+      );
+    },
+
+    cancelJoinTask: (taskId: string) =>
+      apiFetch<{ ok: boolean }>(`/groups/join-batch/${taskId}/cancel`, {
+        method: 'POST',
+      }),
+
+    // 群组管理
+    sync: () =>
+      apiFetch<{ syncedCount: number; newCount: number; updatedCount: number }>(
+        '/groups/sync',
+        {
+          method: 'POST',
+        }
+      ),
+
+    list: (filters?: {
+      search?: string;
+      isActive?: boolean;
+      isMonitoring?: boolean;
+      limit?: number;
+      offset?: number;
+    }) => {
+      const params = new URLSearchParams();
+      if (filters?.search) params.append('search', filters.search);
+      if (filters?.isActive !== undefined) params.append('isActive', filters.isActive.toString());
+      if (filters?.isMonitoring !== undefined) params.append('isMonitoring', filters.isMonitoring.toString());
+      if (filters?.limit) params.append('limit', filters.limit.toString());
+      if (filters?.offset) params.append('offset', filters.offset.toString());
+
+      const queryString = params.toString();
+      return apiFetch<{ groups: any[]; total: number }>(
+        `/groups${queryString ? `?${queryString}` : ''}`
+      );
+    },
+
+    // 群组群发
+    broadcast: (data: {
+      title: string;
+      message: string;
+      targetGroupIds: string[];
+      mediaUrl?: string;
+      scheduledAt?: string;
+      ratePerMinute?: number;
+      jitterMs?: [number, number];
+    }) =>
+      apiFetch<any>('/groups/broadcast', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+
+    getBroadcastStatus: (broadcastId: string) =>
+      apiFetch<any>(`/groups/broadcast/${broadcastId}`),
+
+    listBroadcasts: (filters?: {
+      status?: string;
+      limit?: number;
+      offset?: number;
+    }) => {
+      const params = new URLSearchParams();
+      if (filters?.status) params.append('status', filters.status);
+      if (filters?.limit) params.append('limit', filters.limit.toString());
+      if (filters?.offset) params.append('offset', filters.offset.toString());
+
+      const queryString = params.toString();
+      return apiFetch<{ broadcasts: any[]; total: number }>(
+        `/groups/broadcast${queryString ? `?${queryString}` : ''}`
+      );
+    },
+
+    pauseBroadcast: (broadcastId: string) =>
+      apiFetch<{ ok: boolean }>(`/groups/broadcast/${broadcastId}/pause`, {
+        method: 'POST',
+      }),
+
+    resumeBroadcast: (broadcastId: string) =>
+      apiFetch<{ ok: boolean }>(`/groups/broadcast/${broadcastId}/resume`, {
+        method: 'POST',
+      }),
+
+    cancelBroadcast: (broadcastId: string) =>
+      apiFetch<{ ok: boolean }>(`/groups/broadcast/${broadcastId}/cancel`, {
+        method: 'POST',
+      }),
+
+    // 群消息监控
+    getGroupDetails: (groupId: string) =>
+      apiFetch<any>(`/groups/${groupId}/details`),
+
+    // 发送群组消息（简化版）
+    sendMessage: (groupId: string, data: { message: string }) =>
+      apiFetch<any>(`/groups/${groupId}/send`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+
+    // 发送群组媒体（简化版）
+    sendMedia: (groupId: string, data: {
+      mediaFileName: string;
+      mediaType: string;
+      caption?: string;
+      originalFileName?: string;
+    }) =>
+      apiFetch<any>(`/groups/${groupId}/send-media`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+
+    sendGroupMessage: (groupId: string, message: string) =>
+      apiFetch<any>(`/groups/${groupId}/send`, {
+        method: 'POST',
+        body: JSON.stringify({ message }),
+      }),
+
+    sendGroupMediaMessage: (groupId: string, mediaFileName: string, mediaType: string, caption?: string, originalFileName?: string) =>
+      apiFetch<any>(`/groups/${groupId}/send-media`, {
+        method: 'POST',
+        body: JSON.stringify({ mediaFileName, mediaType, caption, originalFileName }),
+      }),
+
+    updateGroupSettings: (groupId: string, settings: {
+      isMonitoring?: boolean;
+      keywords?: string[];
+      tags?: string[];
+    }) =>
+      apiFetch<any>(`/groups/${groupId}/settings`, {
+        method: 'PUT',
+        body: JSON.stringify(settings),
+      }),
+
+    getGroupMessages: (groupId: string, filters?: {
+      fromPhone?: string;
+      keyword?: string;
+      startDate?: string;
+      endDate?: string;
+      limit?: number;
+      offset?: number;
+    }) => {
+      const params = new URLSearchParams();
+      if (filters?.fromPhone) params.append('fromPhone', filters.fromPhone);
+      if (filters?.keyword) params.append('keyword', filters.keyword);
+      if (filters?.startDate) params.append('startDate', filters.startDate);
+      if (filters?.endDate) params.append('endDate', filters.endDate);
+      if (filters?.limit) params.append('limit', filters.limit.toString());
+      if (filters?.offset) params.append('offset', filters.offset.toString());
+
+      const queryString = params.toString();
+      return apiFetch<{ messages: any[]; total: number }>(
+        `/groups/${groupId}/messages${queryString ? `?${queryString}` : ''}`
+      );
+    },
+
+    getGroupStats: (groupId: string, period?: '7d' | '30d' | '90d') => {
+      const params = new URLSearchParams();
+      if (period) params.append('period', period);
+      
+      const queryString = params.toString();
+      return apiFetch<any>(
+        `/groups/${groupId}/stats${queryString ? `?${queryString}` : ''}`
+      );
+    },
+
+    getGroupMembers: (groupId: string, filters?: {
+      isActive?: boolean;
+      search?: string;
+      limit?: number;
+      offset?: number;
+    }) => {
+      const params = new URLSearchParams();
+      if (filters?.isActive !== undefined) params.append('isActive', filters.isActive.toString());
+      if (filters?.search) params.append('search', filters.search);
+      if (filters?.limit) params.append('limit', filters.limit.toString());
+      if (filters?.offset) params.append('offset', filters.offset.toString());
+
+      const queryString = params.toString();
+      return apiFetch<{ members: any[]; total: number }>(
+        `/groups/${groupId}/members${queryString ? `?${queryString}` : ''}`
+      );
+    },
+
+    syncGroupMembers: (groupId: string) =>
+      apiFetch<{ syncedCount: number; newCount: number }>(
+        `/groups/${groupId}/sync-members`,
+        {
+          method: 'POST',
+        }
+      ),
+
+    // 统计接口
+    getOverviewStats: () =>
+      apiFetch<any>('/groups/stats/overview'),
+
+    getJoinTasksStats: (period?: '7d' | '30d' | '90d') =>
+      apiFetch<any>(`/groups/stats/join-tasks${period ? `?period=${period}` : ''}`),
+
+    getBroadcastsStats: (period?: '7d' | '30d' | '90d') =>
+      apiFetch<any>(`/groups/stats/broadcasts${period ? `?period=${period}` : ''}`),
   },
 
 };

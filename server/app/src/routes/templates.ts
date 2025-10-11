@@ -31,8 +31,9 @@ export async function templateRoutes(fastify: FastifyInstance) {
   // 创建模板
   fastify.post('/templates', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
+      const accountId = request.accountId!;
       const data = templateCreateSchema.parse(request.body);
-      const template = await EnhancedTemplateService.createTemplate(data);
+      const template = await EnhancedTemplateService.createTemplate(accountId, data);
       
       logger.info('Template created', { templateId: template.id, name: template.name } as any);
       

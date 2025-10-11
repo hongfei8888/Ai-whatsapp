@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import WhatsAppLayout, { WhatsAppColors } from '@/components/layout/WhatsAppLayout';
 import Sidebar from '@/components/layout/Sidebar';
 import { api } from '@/lib/api';
+import { useAccountSwitchRefresh } from '@/hooks/useAccountSwitch';
+import { useAccount } from '@/lib/account-context';
 
 const styles = {
   listHeader: {
@@ -41,6 +43,20 @@ const styles = {
     fontSize: '14px',
     fontWeight: '500' as const,
     transition: 'background-color 0.2s',
+  },
+  syncButton: {
+    padding: '6px 12px',
+    backgroundColor: '#10a37f',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    fontSize: '14px',
+    fontWeight: '500' as const,
+    transition: 'background-color 0.2s',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
   },
   toolbarRow: {
     display: 'flex',
@@ -287,40 +303,76 @@ const styles = {
 
 export default function ContactsPage() {
   const router = useRouter();
+  const { currentAccountId } = useAccount();
   const [contacts, setContacts] = useState<any[]>([]);
+  const [groups, setGroups] = useState<any[]>([]);
   const [threads, setThreads] = useState<any[]>([]);
   const [selectedContact, setSelectedContact] = useState<any>(null);
+  const [selectedGroup, setSelectedGroup] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'name' | 'time'>('name');
   const [filterBy, setFilterBy] = useState<'all' | 'withChat' | 'withoutChat'>('all');
+  const [viewMode, setViewMode] = useState<'contacts' | 'groups'>('contacts');
   
   // 弹窗状态
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [formData, setFormData] = useState({ phoneE164: '', name: '' });
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
   const loadData = async () => {
     try {
       setLoading(true);
-      const [contactsData, threadsData] = await Promise.all([
-        api.getContacts(),
-        api.getThreads()
-      ]);
-      setContacts(contactsData.contacts || []);
-      setThreads(threadsData.threads || []);
+      if (viewMode === 'contacts') {
+        // 🔥 使用 contacts API 获取所有联系人（包括没有聊天记录的）
+        const contactsResult = await api.contacts.list();
+        
+        // 处理两种可能的返回格式
+        let contactsList: any[] = [];
+        if (Array.isArray(contactsResult)) {
+          // 格式1: 直接返回数组
+          contactsList = contactsResult;
+        } else if (contactsResult?.data && Array.isArray(contactsResult.data)) {
+          // 格式2: {ok: true, data: [...]}
+          contactsList = contactsResult.data;
+        }
+        
+        setContacts(contactsList);
+        
+        // 同时获取 threads，用于显示最后消息时间等信息
+        try {
+          const threadsData = await api.getThreads();
+          setThreads(threadsData.threads || []);
+        } catch (threadError) {
+          console.warn('获取对话列表失败:', threadError);
+          setThreads([]);
+        }
+      } else {
+        const groupsData = await api.groups.list({ isActive: true, limit: 1000 });
+        setGroups(groupsData.groups || []);
+      }
     } catch (error) {
-      console.error('加载数据失败:', error);
-      setContacts([]);
-      setThreads([]);
+      console.error('❌ 加载数据失败:', error);
+      if (viewMode === 'contacts') {
+        setContacts([]);
+        setThreads([]);
+      } else {
+        setGroups([]);
+      }
     } finally {
       setLoading(false);
     }
   };
+
+  // 监听账号切换事件
+  useAccountSwitchRefresh(() => {
+    loadData();
+  });
+
+  useEffect(() => {
+    loadData();
+  }, [viewMode]);
 
   const getInitials = (name: string) => {
     return name?.charAt(0)?.toUpperCase() || '?';
@@ -353,11 +405,28 @@ export default function ContactsPage() {
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
 
+  // 筛选群组
+  const filteredGroups = groups
+    .filter(group => {
+      const name = group.name || '';
+      return name.toLowerCase().includes(searchQuery.toLowerCase());
+    })
+    .sort((a, b) => {
+      if (sortBy === 'name') {
+        return (a.name || '').localeCompare(b.name || '');
+      }
+      return new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime();
+    });
+
   // 统计数据
-  const stats = {
+  const stats = viewMode === 'contacts' ? {
     total: contacts.length,
     withChat: enhancedContacts.filter(c => c.hasThread).length,
     withoutChat: enhancedContacts.filter(c => !c.hasThread).length,
+  } : {
+    total: groups.length,
+    monitoring: groups.filter(g => g.isMonitoring).length,
+    active: groups.filter(g => g.isActive).length,
   };
 
   const handleChatWith = async (contact: any) => {
@@ -382,17 +451,55 @@ export default function ContactsPage() {
       return;
     }
 
+    if (!currentAccountId) {
+      alert('请先选择账号');
+      return;
+    }
+
     try {
-      await api.createContact({
+      // ✅ 使用新的多账号contacts API创建联系人
+      const result = await api.contacts.create({
         phoneE164: formData.phoneE164,
         name: formData.name || undefined,
+        consent: true,
       });
+      
+      if (result.ok) {
+        alert('添加成功！');
+        await loadData(); // 重新加载数据
+        setShowAddDialog(false);
+        setFormData({ phoneE164: '', name: '' });
+      } else {
+        alert('添加失败，请重试');
+      }
+    } catch (error: any) {
+      if (error.message?.includes('already exists') || error.message?.includes('CONTACT_EXISTS')) {
+        alert('该联系人已存在');
+      } else {
+        alert('操作失败：' + (error instanceof Error ? error.message : '未知错误'));
+      }
+    }
+  };
+
+  const handleSyncContacts = async () => {
+    if (!currentAccountId) {
+      alert('请先选择账号');
+      return;
+    }
+
+    try {
+      setSyncing(true);
+      const result = await api.accounts.syncContacts(currentAccountId);
+      
+      // 同步完成后重新加载联系人列表
       await loadData();
-      setShowAddDialog(false);
-      setFormData({ phoneE164: '', name: '' });
-      alert('添加成功');
+      
+      alert(`同步成功！\n新增: ${result.added} 个\n更新: ${result.updated} 个\n总计: ${result.total} 个联系人`);
     } catch (error) {
-      alert('添加失败：' + (error instanceof Error ? error.message : '未知错误'));
+      console.error('同步联系人失败:', error);
+      alert('同步失败：' + (error instanceof Error ? error.message : '未知错误'));
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -434,22 +541,158 @@ export default function ContactsPage() {
   const listPanel = (
     <>
       <div style={styles.listHeader}>
-        {/* 顶部栏：标题和添加按钮 */}
+        {/* 顶部栏：标题和操作按钮 */}
         <div style={styles.headerTop}>
-          <div style={styles.headerTitle}>联系人</div>
-          <div style={styles.headerActions}>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <button
-              style={styles.addButton}
-              onClick={() => setShowAddDialog(true)}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = WhatsAppColors.accentHover;
+              style={{
+                padding: '6px 12px',
+                borderRadius: '6px',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '600',
+                backgroundColor: viewMode === 'contacts' ? WhatsAppColors.accent : WhatsAppColors.inputBackground,
+                color: viewMode === 'contacts' ? '#fff' : WhatsAppColors.textPrimary,
+                transition: 'all 0.2s',
               }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = WhatsAppColors.accent;
+              onClick={() => {
+                setViewMode('contacts');
+                setSelectedContact(null);
+                setSelectedGroup(null);
               }}
             >
-              ➕ 添加
+              👤 联系人
             </button>
+            <button
+              style={{
+                padding: '6px 12px',
+                borderRadius: '6px',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '600',
+                backgroundColor: viewMode === 'groups' ? WhatsAppColors.accent : WhatsAppColors.inputBackground,
+                color: viewMode === 'groups' ? '#fff' : WhatsAppColors.textPrimary,
+                transition: 'all 0.2s',
+              }}
+              onClick={() => {
+                setViewMode('groups');
+                setSelectedContact(null);
+                setSelectedGroup(null);
+              }}
+            >
+              👥 群组
+            </button>
+          </div>
+          <div style={styles.headerActions}>
+            {viewMode === 'contacts' && (
+              <>
+                <button
+                  style={{
+                    ...styles.syncButton,
+                    opacity: syncing ? 0.6 : 1,
+                    cursor: syncing ? 'not-allowed' : 'pointer',
+                  }}
+                  onClick={handleSyncContacts}
+                  disabled={syncing}
+                  onMouseEnter={(e) => {
+                    if (!syncing) {
+                      e.currentTarget.style.backgroundColor = '#0d8c6b';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!syncing) {
+                      e.currentTarget.style.backgroundColor = '#10a37f';
+                    }
+                  }}
+                >
+                  {syncing ? (
+                    <>
+                      <span style={{ animation: 'spin 1s linear infinite' }}>⟳</span>
+                      <span>同步中...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>↻</span>
+                      <span>同步联系人</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  style={styles.addButton}
+                  onClick={() => setShowAddDialog(true)}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = WhatsAppColors.accentHover;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = WhatsAppColors.accent;
+                  }}
+                >
+                  ➕ 添加
+                </button>
+              </>
+            )}
+            {viewMode === 'groups' && (
+              <button
+                style={styles.addButton}
+                onClick={async () => {
+                  try {
+                  setLoading(true);
+                  
+                  // 检查是否已选择账号
+                  if (!currentAccountId) {
+                    alert('❌ 请先选择账号\n\n请在左侧边栏选择一个 WhatsApp 账号');
+                    setLoading(false);
+                    return;
+                  }
+                  
+                  // 先检查 WhatsApp 账号状态
+                  let whatsappStatus;
+                  try {
+                    whatsappStatus = await api.accounts.getStatus(currentAccountId);
+                  } catch (statusError) {
+                    alert('❌ 无法连接到后端服务\n\n请确保后端服务正常运行');
+                    setLoading(false);
+                    return;
+                  }
+                  
+                  // 检查 WhatsApp 是否已登录 (使用 sessionReady 字段)
+                  if (!whatsappStatus.sessionReady) {
+                    alert('⚠️ WhatsApp 未就绪\n\n当前状态: ' + (whatsappStatus.status || '未知') + '\n\n请先在仪表盘页面扫码登录 WhatsApp');
+                    setLoading(false);
+                    return;
+                  }
+                    
+                    // 执行同步
+                    const result = await api.groups.sync();
+                    
+                    // 检查同步结果
+                    if (result.syncedCount === 0) {
+                      alert('⚠️ 未找到任何群组\n\n可能原因：\n1. 您的 WhatsApp 账号中没有群组\n2. 群组数据尚未加载完成，请稍后再试');
+                    } else {
+                      alert(`✅ 同步成功！\n\n📊 同步统计：\n• 同步总数: ${result.syncedCount} 个群组\n• 新增: ${result.newCount} 个\n• 更新: ${result.updatedCount} 个`);
+                    }
+                    
+                    // 重新加载数据
+                    await loadData();
+                  } catch (error: any) {
+                    console.error('同步失败:', error);
+                    alert('❌ 同步失败\n\n错误信息：' + (error.message || '未知错误') + '\n\n请确保：\n1. WhatsApp 已登录\n2. 后端服务正常运行\n3. 网络连接正常');
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = WhatsAppColors.accentHover;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = WhatsAppColors.accent;
+                }}
+              >
+                🔄 同步群组
+              </button>
+            )}
           </div>
         </div>
 
@@ -477,11 +720,23 @@ export default function ContactsPage() {
 
         {/* 统计信息 */}
         <div style={styles.statsRow}>
-          <span>总计: {stats.total}</span>
-          <span>•</span>
-          <span>有对话: {stats.withChat}</span>
-          <span>•</span>
-          <span>无对话: {stats.withoutChat}</span>
+          {viewMode === 'contacts' ? (
+            <>
+              <span>总计: {stats.total}</span>
+              <span>•</span>
+              <span>有对话: {(stats as any).withChat}</span>
+              <span>•</span>
+              <span>无对话: {(stats as any).withoutChat}</span>
+            </>
+          ) : (
+            <>
+              <span>总计: {stats.total}</span>
+              <span>•</span>
+              <span>监控中: {(stats as any).monitoring}</span>
+              <span>•</span>
+              <span>活跃: {(stats as any).active}</span>
+            </>
+          )}
         </div>
       </div>
 
@@ -490,7 +745,7 @@ export default function ContactsPage() {
           <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: WhatsAppColors.textSecondary }}>🔍</span>
           <input
             type="text"
-            placeholder="搜索联系人"
+            placeholder={viewMode === 'contacts' ? '搜索联系人' : '搜索群组'}
             style={styles.searchInput}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -503,18 +758,19 @@ export default function ContactsPage() {
           <div style={{ padding: '20px', textAlign: 'center', color: WhatsAppColors.textSecondary }}>
             加载中...
           </div>
-        ) : filteredContacts.length === 0 ? (
-          <div style={{ padding: '40px 20px', textAlign: 'center', color: WhatsAppColors.textSecondary }}>
-            <div style={{ fontSize: '48px', marginBottom: '16px' }}>📇</div>
-            <div style={{ fontSize: '16px', marginBottom: '8px', color: WhatsAppColors.textPrimary }}>
-              {searchQuery ? '未找到匹配的联系人' : '暂无联系人'}
+        ) : viewMode === 'contacts' ? (
+          filteredContacts.length === 0 ? (
+            <div style={{ padding: '40px 20px', textAlign: 'center', color: WhatsAppColors.textSecondary }}>
+              <div style={{ fontSize: '48px', marginBottom: '16px' }}>📇</div>
+              <div style={{ fontSize: '16px', marginBottom: '8px', color: WhatsAppColors.textPrimary }}>
+                {searchQuery ? '未找到匹配的联系人' : '暂无联系人'}
+              </div>
+              <div style={{ fontSize: '14px' }}>
+                {!searchQuery && '点击右上角"添加"按钮添加新联系人'}
+              </div>
             </div>
-            <div style={{ fontSize: '14px' }}>
-              {!searchQuery && '点击右上角"添加"按钮添加新联系人'}
-            </div>
-          </div>
-        ) : (
-          filteredContacts.map((contact) => (
+          ) : (
+            filteredContacts.map((contact) => (
             <div
               key={contact.id}
               style={styles.contactItem}
@@ -559,13 +815,164 @@ export default function ContactsPage() {
               </div>
             </div>
           ))
+          )
+        ) : (
+          filteredGroups.length === 0 ? (
+            <div style={{ padding: '40px 20px', textAlign: 'center', color: WhatsAppColors.textSecondary }}>
+              <div style={{ fontSize: '48px', marginBottom: '16px' }}>👥</div>
+              <div style={{ fontSize: '16px', marginBottom: '8px', color: WhatsAppColors.textPrimary }}>
+                {searchQuery ? '未找到匹配的群组' : '暂无群组'}
+              </div>
+              <div style={{ fontSize: '14px' }}>
+                {!searchQuery && '点击右上角"同步群组"按钮从WhatsApp同步'}
+              </div>
+            </div>
+          ) : (
+            filteredGroups.map((group) => (
+              <div
+                key={group.id}
+                style={styles.contactItem}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = WhatsAppColors.hover;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
+                onClick={() => setSelectedGroup(group)}
+              >
+                <div style={{
+                  ...styles.contactAvatar,
+                  backgroundColor: WhatsAppColors.accent,
+                }}>
+                  {getInitials(group.name)}
+                </div>
+                
+                <div style={styles.contactInfo}>
+                  <div style={styles.contactName}>
+                    {group.name}
+                    {group.isMonitoring && <span style={{ marginLeft: '6px', color: WhatsAppColors.accent }}>👁️</span>}
+                  </div>
+                  <div style={styles.contactPhone}>
+                    👥 {group.memberCount} 名成员
+                  </div>
+                </div>
+              </div>
+            ))
+          )
         )}
       </div>
     </>
   );
 
+  // 群组详情面板
+  const groupDetailPanel = selectedGroup ? (
+    <div style={styles.detailPanel}>
+      <div style={styles.detailHeader}>
+        <div style={{
+          ...styles.detailAvatar,
+          backgroundColor: WhatsAppColors.accent,
+        }}>
+          {getInitials(selectedGroup.name)}
+        </div>
+        <div style={{...styles.detailName, cursor: 'default'}} onMouseEnter={() => {}} onMouseLeave={() => {}}>
+          {selectedGroup.name}
+        </div>
+        <div style={styles.detailPhone}>
+          群组 ID: {selectedGroup.groupId}
+        </div>
+      </div>
+
+      <div style={styles.detailBody}>
+        {/* 操作按钮 */}
+        <div style={styles.infoSection}>
+          <button
+            style={styles.actionButton}
+            onClick={() => router.push('/groups/monitoring')}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = WhatsAppColors.accentHover;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = WhatsAppColors.accent;
+            }}
+          >
+            📊 查看群消息监控
+          </button>
+          
+          <button
+            style={styles.actionButton}
+            onClick={async () => {
+              try {
+                await api.groups.syncGroupMembers(selectedGroup.id);
+                alert('群成员同步成功');
+                loadData();
+              } catch (error: any) {
+                alert('同步失败：' + error.message);
+              }
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = WhatsAppColors.accentHover;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = WhatsAppColors.accent;
+            }}
+          >
+            🔄 同步群成员
+          </button>
+        </div>
+
+        {/* 群组信息 */}
+        <div style={styles.infoSection}>
+          <div style={styles.sectionTitle}>群组信息</div>
+          <div style={styles.infoItem}>
+            <span style={styles.infoLabel}>群组名称</span>
+            <span style={styles.infoValue}>{selectedGroup.name}</span>
+          </div>
+          <div style={styles.infoItem}>
+            <span style={styles.infoLabel}>成员数量</span>
+            <span style={styles.infoValue}>{selectedGroup.memberCount}</span>
+          </div>
+          <div style={styles.infoItem}>
+            <span style={styles.infoLabel}>监控状态</span>
+            <span style={styles.infoValue}>
+              {selectedGroup.isMonitoring ? '👁️ 监控中' : '⭕ 未监控'}
+            </span>
+          </div>
+          <div style={styles.infoItem}>
+            <span style={styles.infoLabel}>活跃状态</span>
+            <span style={styles.infoValue}>
+              {selectedGroup.isActive ? '✅ 活跃' : '⭕ 不活跃'}
+            </span>
+          </div>
+          {selectedGroup.description && (
+            <div style={styles.infoItem}>
+              <span style={styles.infoLabel}>群组简介</span>
+              <span style={styles.infoValue}>{selectedGroup.description}</span>
+            </div>
+          )}
+        </div>
+
+        {/* 时间信息 */}
+        <div style={styles.infoSection}>
+          <div style={styles.sectionTitle}>时间信息</div>
+          <div style={styles.infoItem}>
+            <span style={styles.infoLabel}>创建时间</span>
+            <span style={styles.infoValue}>
+              {new Date(selectedGroup.createdAt).toLocaleString('zh-CN')}
+            </span>
+          </div>
+          <div style={styles.infoItem}>
+            <span style={styles.infoLabel}>更新时间</span>
+            <span style={styles.infoValue}>
+              {new Date(selectedGroup.updatedAt).toLocaleString('zh-CN')}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  ) : null;
+
   // 详情面板
-  const mainContent = selectedContact ? (
+  const mainContent = selectedGroup ? groupDetailPanel : selectedContact ? (
     <div style={styles.detailPanel}>
       <div style={styles.detailHeader}>
         {/* 大头像 */}
@@ -691,13 +1098,26 @@ export default function ContactsPage() {
       color: WhatsAppColors.textSecondary,
       gap: '16px'
     }}>
-      <div style={{ fontSize: '64px' }}>👤</div>
-      <div style={{ fontSize: '18px' }}>选择一个联系人查看详情</div>
+      <div style={{ fontSize: '64px' }}>{viewMode === 'contacts' ? '👤' : '👥'}</div>
+      <div style={{ fontSize: '18px' }}>
+        {viewMode === 'contacts' ? '选择一个联系人查看详情' : '选择一个群组查看详情'}
+      </div>
     </div>
   );
 
   return (
     <>
+      <style jsx global>{`
+        @keyframes spin {
+          from {
+            transform: rotate(0deg);
+          }
+          to {
+            transform: rotate(360deg);
+          }
+        }
+      `}</style>
+      
       <WhatsAppLayout
         sidebar={<Sidebar />}
         listPanel={listPanel}

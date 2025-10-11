@@ -31,7 +31,7 @@ function sanitizeVariables(variables?: string[]): string[] {
   return Array.from(new Set(variables.filter((item) => item.trim().length > 0))).map((item) => item.trim());
 }
 
-export async function createTemplate(payload: TemplatePayload): Promise<MessageTemplateRecord> {
+export async function createTemplate(accountId: string, payload: TemplatePayload): Promise<MessageTemplateRecord> {
   ensureNoForbiddenKeyword(payload.content);
   const autoVariables = extractTemplateVariables(payload.content);
   const explicitVariables = sanitizeVariables(payload.variables);
@@ -39,6 +39,7 @@ export async function createTemplate(payload: TemplatePayload): Promise<MessageT
 
   return prisma.messageTemplate.create({
     data: {
+      accountId,
       name: payload.name,
       content: payload.content,
       variables: mergedVariables,

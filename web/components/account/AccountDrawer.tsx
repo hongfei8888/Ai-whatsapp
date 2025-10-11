@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { api } from '@/lib/api';
+import { useAccount } from '@/lib/account-context';
 import type { StatusPayload } from '@/lib/types';
 import { toast } from 'sonner';
 
@@ -32,6 +33,7 @@ interface AccountDrawerProps {
 }
 
 export function AccountDrawer({ trigger, open, onOpenChange }: AccountDrawerProps) {
+  const { currentAccountId } = useAccount();
   const [status, setStatus] = useState<StatusPayload | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -43,9 +45,14 @@ export function AccountDrawer({ trigger, open, onOpenChange }: AccountDrawerProp
   }, [open]);
 
   const loadStatus = async () => {
+    if (!currentAccountId) {
+      toast.error('请先选择账号');
+      return;
+    }
+    
     setIsLoading(true);
     try {
-      const statusData = await api.getStatus();
+      const statusData = await api.accounts.getStatus(currentAccountId);
       setStatus(statusData);
     } catch (err) {
       toast.error('加载账号信息失败');

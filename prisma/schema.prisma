@@ -7,6 +7,77 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// 🆕 多账号管理模型
+model Account {
+  id          String    @id @default(cuid())
+  name        String    // 账号名称（用于区分）
+  phoneNumber String?   // 电话号码
+  phoneE164   String?   // E.164格式电话号码
+  sessionPath String    @unique // 会话数据存储路径
+  status      String    @default("offline") // online, offline, qr, connecting
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  lastOnline  DateTime? // 最后在线时间
+  
+  // 级联删除关联数据
+  contacts    Contact[]
+  groups      Group[]
+  messages    Message[]
+  templates   MessageTemplate[]
+  campaigns   Campaign[]
+  batches     BatchOperation[]
+  knowledge   KnowledgeBase[]
+  
+  @@index([status, isActive])
+}
+
+// 🆕 群组管理模型
+model Group {
+  id          String    @id @default(cuid())
+  accountId   String    // 所属账号
+  groupId     String    // WhatsApp群组ID
+  name        String    // 群组名称
+  description String?   // 群组描述
+  imageUrl    String?   // 群组头像URL
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  // 群组设置
+  isMonitoring Boolean  @default(false) // 是否监控
+  isActive     Boolean  @default(true)  // 是否激活
+  
+  // 统计数据
+  memberCount  Int      @default(0)     // 成员数量
+  messageCount Int      @default(0)     // 消息数量
+  lastMessageAt DateTime?               // 最后消息时间
+  
+  // 关联
+  account      Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  members      GroupMember[]
+  
+  @@unique([accountId, groupId])
+  @@index([accountId, isActive])
+}
+
+// 🆕 群组成员模型
+model GroupMember {
+  id          String    @id @default(cuid())
+  groupId     String    // 所属群组
+  phoneE164   String    // 成员电话（E.164格式）
+  name        String?   // 成员名称
+  role        String    @default("member") // admin, member
+  isActive    Boolean   @default(true)     // 是否活跃
+  joinedAt    DateTime  @default(now())
+  lastSeenAt  DateTime?
+  
+  // 关联
+  group       Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  
+  @@unique([groupId, phoneE164])
+  @@index([groupId, isActive])
+}
+
 enum MessageDirection {
   IN
   OUT
@@ -44,12 +115,19 @@ model Contact {
   notes          String?   // 备注信息
 
   id             String    @id @default(cuid())
-  phoneE164      String    @unique
+  accountId      String    // 🆕 所属账号
+  phoneE164      String
   name           String?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
+  
+  // 关联
+  account        Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
   threads        Thread[]
   campaignRecipients CampaignRecipient[]
+  
+  @@unique([accountId, phoneE164])
+  @@index([accountId])
 }
 
 model Thread {
@@ -69,13 +147,17 @@ model Thread {
 
 model Message {
   id             String           @id @default(cuid())
+  accountId      String           // 🆕 所属账号
   threadId       String
-  externalId     String?          @unique
+  externalId     String?
   direction      MessageDirection
   text           String?
   translatedText String?          // 翻译后的文本
   status         MessageStatus    @default(SENT)
   createdAt      DateTime         @default(now())
+  
+  // 关联
+  account        Account          @relation(fields: [accountId], references: [id], onDelete: Cascade)
   thread         Thread           @relation(fields: [threadId], references: [id])
 
   // 媒体文件支持
@@ -115,6 +197,8 @@ model Message {
   deliveredAt   DateTime?      // 送达时间
   readAt        DateTime?      // 已读时间
 
+  @@unique([accountId, externalId])
+  @@index([accountId, threadId, createdAt])
   @@index([threadId, createdAt])
   @@index([replyToId])
 }
@@ -133,6 +217,7 @@ model AiConfig {
 // 扩展的MessageTemplate模型
 model MessageTemplate {
   id          String   @id @default(cuid())
+  accountId   String   // 🆕 所属账号
   name        String
   content     String
   description String?  // 模板描述
@@ -145,9 +230,12 @@ model MessageTemplate {
   sortOrder   Int      @default(0) // 排序顺序
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  
+  // 关联
+  account     Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
   campaigns   Campaign[]
 
-  @@index([category, isActive])
+  @@index([accountId, category, isActive])
   @@index([usageCount, lastUsedAt])
 }
 
@@ -166,6 +254,7 @@ model TemplateCategory {
 
 model Campaign {
   id             String          @id @default(cuid())
+  accountId      String          // 🆕 所属账号
   name           String
   templateId     String?
   content        String?
@@ -178,8 +267,13 @@ model Campaign {
   failed         Int             @default(0)
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
+  
+  // 关联
+  account        Account         @relation(fields: [accountId], references: [id], onDelete: Cascade)
   template       MessageTemplate? @relation(fields: [templateId], references: [id])
   recipients     CampaignRecipient[]
+  
+  @@index([accountId, status])
 }
 
 model CampaignRecipient {
@@ -203,6 +297,7 @@ model CampaignRecipient {
 // 批量操作记录表
 model BatchOperation {
   id            String    @id @default(cuid())
+  accountId     String    // 🆕 所属账号
   type          String    // 'import', 'send', 'tag', 'delete', 'archive'
   status        String    @default("pending") // 'pending', 'processing', 'completed', 'failed', 'cancelled'
   title         String
@@ -220,8 +315,12 @@ model BatchOperation {
   startedAt     DateTime?
   completedAt   DateTime?
   createdBy     String    @default("system")
+  
+  // 关联
+  account       Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
   items         BatchOperationItem[]
 
+  @@index([accountId, type, status])
   @@index([type, status])
 }
 
@@ -244,6 +343,7 @@ model BatchOperationItem {
 // 知识库表
 model KnowledgeBase {
   id          String    @id @default(cuid())
+  accountId   String    // 🆕 所属账号
   title       String
   content     String
   category    String    @default("general")
@@ -255,7 +355,11 @@ model KnowledgeBase {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   createdBy   String    @default("system")
+  
+  // 关联
+  account     Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
+  @@index([accountId, category, isActive])
   @@index([category, isActive])
   @@index([priority, usageCount])
 }

@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { logger } from './logger';
-import { whatsappService } from './whatsapp-service';
+import type { AccountManager } from './services/account-manager';
 import { EventEmitter } from 'events';
 
 export interface WebSocketMessage {
@@ -12,15 +12,17 @@ export interface WebSocketMessage {
 export class WebSocketService extends EventEmitter {
   private connections: Set<any> = new Set();
   private fastify: FastifyInstance | null = null;
+  private accountManager: AccountManager | null = null;
 
   constructor() {
     super();
-    this.setupWhatsAppEventListeners();
   }
 
-  public initialize(fastify: FastifyInstance): void {
+  public initialize(fastify: FastifyInstance, accountManager: AccountManager): void {
     this.fastify = fastify;
+    this.accountManager = accountManager;
     this.setupWebSocketRoutes();
+    this.setupAccountManagerEventListeners();
   }
 
   private setupWebSocketRoutes(): void {
@@ -67,61 +69,46 @@ export class WebSocketService extends EventEmitter {
     });
   }
 
-  private setupWhatsAppEventListeners(): void {
-    // WhatsApp状态变化事件
-    whatsappService.on('statusChanged', (status) => {
+  private setupAccountManagerEventListeners(): void {
+    if (!this.accountManager) return;
+
+    // 账号状态变化事件
+    this.accountManager.on('accountStatusChanged', (data: any) => {
       this.broadcast({
         type: 'whatsapp_status',
-        data: status,
+        data,
         timestamp: Date.now()
       });
     });
 
-    // 二维码更新事件
-    whatsappService.on('qrUpdated', (qr) => {
+    // 账号二维码更新事件
+    this.accountManager.on('accountQRUpdated', (data: any) => {
       this.broadcast({
         type: 'qr_update',
-        data: { qr },
+        data,
         timestamp: Date.now()
       });
     });
 
-    // 新消息事件
-    whatsappService.on('newMessage', (message) => {
-      logger.info({ message }, '📤 [WebSocket] 收到 newMessage 事件，准备广播');
+    // 账号新消息事件
+    this.accountManager.on('accountNewMessage', (data: any) => {
+      logger.info({ data }, '📤 [WebSocket] 收到 accountNewMessage 事件，准备广播');
       this.broadcast({
         type: 'new_message',
-        data: message,
+        data,
         timestamp: Date.now()
       });
       logger.info({ connections: this.connections.size }, '📤 [WebSocket] 已广播到所有连接');
     });
 
-    // 消息状态更新事件
-    whatsappService.on('messageStatusUpdate', (update) => {
-      this.broadcast({
-        type: 'message_status',
-        data: update,
-        timestamp: Date.now()
-      });
-    });
-
-    // 连接状态事件
-    whatsappService.on('connected', () => {
-      this.broadcast({
-        type: 'whatsapp_connected',
-        data: { message: 'WhatsApp已连接' },
-        timestamp: Date.now()
-      });
-    });
-
-    whatsappService.on('disconnected', () => {
-      this.broadcast({
-        type: 'whatsapp_disconnected',
-        data: { message: 'WhatsApp已断开连接' },
-        timestamp: Date.now()
-      });
-    });
+    // 消息状态更新事件 (可选，需要 AccountManager 转发)
+    // this.accountManager.on('messageStatusUpdate', (data: any) => {
+    //   this.broadcast({
+    //     type: 'message_status',
+    //     data,
+    //     timestamp: Date.now()
+    //   });
+    // });
   }
 
   private addConnection(connection: any): void {

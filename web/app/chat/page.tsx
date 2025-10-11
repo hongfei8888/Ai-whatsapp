@@ -7,6 +7,7 @@ import Sidebar from '@/components/layout/Sidebar';
 import { api } from '@/lib/api';
 import { useWebSocket } from '@/lib/useWebSocket';
 import NewMessageToast from '@/components/NewMessageToast';
+import { useAccountSwitchRefresh } from '@/hooks/useAccountSwitch';
 
 // 聊天/会话整合页面 - 包含聊天列表和会话管理功能
 
@@ -182,8 +183,10 @@ const styles = {
 export default function ChatPage() {
   const router = useRouter();
   const [threads, setThreads] = useState<any[]>([]);
+  const [groups, setGroups] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [chatType, setChatType] = useState<'personal' | 'group'>('personal');
   const [filter, setFilter] = useState<'all' | 'ai' | 'manual'>('all');
   const [newMessageToast, setNewMessageToast] = useState<any>(null);
 
@@ -198,9 +201,25 @@ export default function ChatPage() {
     }
   }, []);
 
+  const loadGroups = useCallback(async () => {
+    try {
+      const data = await api.groups.list();
+      setGroups(data.groups || []);
+    } catch (error) {
+      console.error('加载群组列表失败:', error);
+    }
+  }, []);
+
+  // 监听账号切换事件
+  useAccountSwitchRefresh(() => {
+    loadThreads();
+    loadGroups();
+  });
+
   useEffect(() => {
     loadThreads();
-  }, [loadThreads]);
+    loadGroups();
+  }, [loadThreads, loadGroups]);
 
   // WebSocket 实时更新
   useWebSocket({
@@ -226,12 +245,17 @@ export default function ChatPage() {
         });
       }
     },
+    onGroupMessage: (message) => {
+      console.log('📨 [聊天页面] 收到群组消息！', message);
+      loadGroups(); // 刷新群组列表
+    },
     onStatusUpdate: (status) => {
       console.log('📊 [聊天页面] WhatsApp 状态更新:', status);
     },
     onConnect: () => {
       console.log('🔌 [聊天页面] WebSocket 已连接，加载初始数据');
       loadThreads();
+      loadGroups();
     },
     onDisconnect: () => {
       console.log('🔌 [聊天页面] WebSocket 已断开');
@@ -289,6 +313,18 @@ export default function ChatPage() {
       return timeB - timeA;
     });
 
+  const filteredGroups = groups
+    .filter(group => {
+      const name = group.name || '';
+      return name.toLowerCase().includes(searchQuery.toLowerCase());
+    })
+    .sort((a, b) => {
+      // 按最后更新时间倒序排序（最新的在最前面）
+      const timeA = new Date(a.updatedAt || 0).getTime();
+      const timeB = new Date(b.updatedAt || 0).getTime();
+      return timeB - timeA;
+    });
+
   // 列表面板
   const listPanel = (
     <>
@@ -296,25 +332,44 @@ export default function ChatPage() {
         <div style={styles.headerTitle}>聊天</div>
         <div style={styles.filterTabs}>
           <button 
-            style={styles.filterTab(filter === 'all')}
-            onClick={() => setFilter('all')}
+            style={styles.filterTab(chatType === 'personal')}
+            onClick={() => setChatType('personal')}
           >
-            全部 ({threads.length})
+            👤 个人 ({threads.length})
           </button>
           <button 
-            style={styles.filterTab(filter === 'ai')}
-            onClick={() => setFilter('ai')}
+            style={styles.filterTab(chatType === 'group')}
+            onClick={() => setChatType('group')}
           >
-            🤖 AI ({threads.filter(t => t.aiEnabled).length})
-          </button>
-          <button 
-            style={styles.filterTab(filter === 'manual')}
-            onClick={() => setFilter('manual')}
-          >
-            👤 手动 ({threads.filter(t => !t.aiEnabled).length})
+            👥 群组 ({groups.length})
           </button>
         </div>
       </div>
+
+      {chatType === 'personal' && (
+        <div style={{ backgroundColor: WhatsAppColors.panelBackground, borderBottom: `1px solid ${WhatsAppColors.border}`, padding: '8px 16px' }}>
+          <div style={styles.filterTabs}>
+            <button 
+              style={styles.filterTab(filter === 'all')}
+              onClick={() => setFilter('all')}
+            >
+              全部
+            </button>
+            <button 
+              style={styles.filterTab(filter === 'ai')}
+              onClick={() => setFilter('ai')}
+            >
+              🤖 AI
+            </button>
+            <button 
+              style={styles.filterTab(filter === 'manual')}
+              onClick={() => setFilter('manual')}
+            >
+              手动
+            </button>
+          </div>
+        </div>
+      )}
 
       <div style={styles.searchBar}>
         <div style={{ position: 'relative' }}>
@@ -334,60 +389,106 @@ export default function ChatPage() {
           <div style={{ padding: '20px', textAlign: 'center', color: WhatsAppColors.textSecondary }}>
             加载中...
           </div>
-        ) : filteredThreads.length === 0 ? (
-          <div style={{ padding: '20px', textAlign: 'center', color: WhatsAppColors.textSecondary }}>
-            {searchQuery ? '未找到匹配的聊天' : '暂无聊天记录'}
-          </div>
-        ) : (
-          filteredThreads.map((thread) => (
-            <div
-              key={thread.id}
-              style={styles.chatItem}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = WhatsAppColors.hover;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent';
-              }}
-              onClick={() => router.push(`/chat/${thread.id}`)}
-            >
-              <div style={styles.chatAvatar}>
-                {getInitials(thread.contact?.name || thread.contact?.phoneE164)}
-              </div>
-              <div style={styles.chatInfo}>
-                <div style={styles.chatName}>
-                  {thread.contact?.name || thread.contact?.phoneE164}
+        ) : chatType === 'personal' ? (
+          filteredThreads.length === 0 ? (
+            <div style={{ padding: '20px', textAlign: 'center', color: WhatsAppColors.textSecondary }}>
+              {searchQuery ? '未找到匹配的聊天' : '暂无聊天记录'}
+            </div>
+          ) : (
+            filteredThreads.map((thread) => (
+              <div
+                key={thread.id}
+                style={styles.chatItem}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = WhatsAppColors.hover;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
+                onClick={() => router.push(`/chat/${thread.id}`)}
+              >
+                <div style={styles.chatAvatar}>
+                  {getInitials(thread.contact?.name || thread.contact?.phoneE164)}
                 </div>
-                <div style={styles.chatLastMessage}>
-                  {thread.lastMessage?.fromMe && <span>✓✓</span>}
-                  <span style={styles.messagePreview}>
-                    {thread.lastMessage?.body || `${thread.messagesCount} 条消息`}
-                  </span>
+                <div style={styles.chatInfo}>
+                  <div style={styles.chatName}>
+                    {thread.contact?.name || thread.contact?.phoneE164}
+                  </div>
+                  <div style={styles.chatLastMessage}>
+                    {thread.lastMessage?.fromMe && <span>✓✓</span>}
+                    <span style={styles.messagePreview}>
+                      {thread.lastMessage?.body || `${thread.messagesCount} 条消息`}
+                    </span>
+                  </div>
                 </div>
-              </div>
-              <div style={styles.chatMeta}>
-                <div style={styles.chatTime}>
-                  {thread.updatedAt ? formatTime(thread.updatedAt) : ''}
-                </div>
-                {/* AI 开关 */}
-                <div
-                  style={{
-                    ...styles.aiToggle,
-                    backgroundColor: thread.aiEnabled ? WhatsAppColors.accent : WhatsAppColors.textSecondary,
-                  }}
-                  onClick={(e) => handleToggleAI(thread.id, thread.aiEnabled, e)}
-                  title={thread.aiEnabled ? '点击关闭AI自动回复' : '点击开启AI自动回复'}
-                >
+                <div style={styles.chatMeta}>
+                  <div style={styles.chatTime}>
+                    {thread.updatedAt ? formatTime(thread.updatedAt) : ''}
+                  </div>
+                  {/* AI 开关 */}
                   <div
                     style={{
-                      ...styles.aiToggleKnob,
-                      left: thread.aiEnabled ? '18px' : '2px',
+                      ...styles.aiToggle,
+                      backgroundColor: thread.aiEnabled ? WhatsAppColors.accent : WhatsAppColors.textSecondary,
                     }}
-                  />
+                    onClick={(e) => handleToggleAI(thread.id, thread.aiEnabled, e)}
+                    title={thread.aiEnabled ? '点击关闭AI自动回复' : '点击开启AI自动回复'}
+                  >
+                    <div
+                      style={{
+                        ...styles.aiToggleKnob,
+                        left: thread.aiEnabled ? '18px' : '2px',
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
+            ))
+          )
+        ) : (
+          filteredGroups.length === 0 ? (
+            <div style={{ padding: '20px', textAlign: 'center', color: WhatsAppColors.textSecondary }}>
+              {searchQuery ? '未找到匹配的群组' : '暂无群组'}
             </div>
-          ))
+          ) : (
+            filteredGroups.map((group) => (
+              <div
+                key={group.id}
+                style={styles.chatItem}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = WhatsAppColors.hover;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
+                onClick={() => router.push(`/chat/group/${group.id}`)}
+              >
+                <div style={styles.chatAvatar}>
+                  👥
+                </div>
+                <div style={styles.chatInfo}>
+                  <div style={styles.chatName}>
+                    {group.name}
+                  </div>
+                  <div style={styles.chatLastMessage}>
+                    <span style={styles.messagePreview}>
+                      {group.memberCount} 位成员 {group.isMonitoring && '• 监控中'}
+                    </span>
+                  </div>
+                </div>
+                <div style={styles.chatMeta}>
+                  <div style={styles.chatTime}>
+                    {group.updatedAt ? formatTime(group.updatedAt) : ''}
+                  </div>
+                  {group.isMonitoring && (
+                    <div style={{...styles.badge, ...styles.badgeAI}}>
+                      监控
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))
+          )
         )}
       </div>
     </>
@@ -396,11 +497,20 @@ export default function ChatPage() {
   // 主内容区 - 空状态提示
   const mainContent = (
     <div style={styles.emptyState}>
-      <div style={styles.emptyIcon}>💬</div>
+      <div style={styles.emptyIcon}>{chatType === 'personal' ? '💬' : '👥'}</div>
       <div style={styles.emptyTitle}>WhatsApp Web</div>
       <div style={styles.emptyDescription}>
-        点击左侧聊天开始对话<br />
-        使用右侧开关控制 AI 自动回复
+        {chatType === 'personal' ? (
+          <>
+            点击左侧聊天开始对话<br />
+            使用右侧开关控制 AI 自动回复
+          </>
+        ) : (
+          <>
+            点击左侧群组查看群聊消息<br />
+            可在社群营销中管理群组
+          </>
+        )}
       </div>
     </div>
   );

@@ -110,7 +110,7 @@ function sanitizeTags(tags?: string[]): string[] {
 // 增强的模板服务类
 export class EnhancedTemplateService {
   // 创建模板
-  static async createTemplate(data: TemplatePayload): Promise<TemplateWithCategory> {
+  static async createTemplate(accountId: string, data: TemplatePayload): Promise<TemplateWithCategory> {
     // 验证数据
     const validatedData = templateCreateSchema.parse(data);
     
@@ -128,6 +128,7 @@ export class EnhancedTemplateService {
     // 创建模板
     const template = await prisma.messageTemplate.create({
       data: {
+        accountId,
         name: validatedData.name,
         content: validatedData.content,
         description: validatedData.description,
@@ -280,6 +281,7 @@ export class EnhancedTemplateService {
 
     const template = await prisma.messageTemplate.create({
       data: {
+        accountId: existing.accountId,
         name: newName || `${existing.name} (副本)`,
         content: existing.content,
         description: existing.description,

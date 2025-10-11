@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { api } from '@/lib/api';
+import { useAccount } from '@/lib/account-context';
 import type { StatusPayload } from '@/lib/types';
 
 interface StatusCardProps {
@@ -25,6 +26,7 @@ const STATUS_BADGES: Record<string, { label: string; variant: 'default' | 'secon
 };
 
 export function StatusCard({ initial }: StatusCardProps) {
+  const { currentAccountId } = useAccount();
   // const { toast } = useToast();
   const [status, setStatus] = useState(initial);
   const [qrImage, setQrImage] = useState<string | null>(null);
@@ -61,9 +63,11 @@ export function StatusCard({ initial }: StatusCardProps) {
   }, [status.qr]);
 
   useEffect(() => {
+    if (!currentAccountId) return;
+    
     const interval = setInterval(async () => {
       try {
-        const next = await api.getStatus();
+        const next = await api.accounts.getStatus(currentAccountId);
         setStatus(next);
       } catch (error) {
         console.error(error);
@@ -71,12 +75,14 @@ export function StatusCard({ initial }: StatusCardProps) {
     }, 5000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [currentAccountId]);
 
   const handleRefresh = async () => {
+    if (!currentAccountId) return;
+    
     setRefreshing(true);
     try {
-      const next = await api.getStatus();
+      const next = await api.accounts.getStatus(currentAccountId);
       setStatus(next);
     } catch (error) {
       console.error('Failed to refresh status:', error);
@@ -91,11 +97,13 @@ export function StatusCard({ initial }: StatusCardProps) {
   };
 
   const handleLogin = async () => {
+    if (!currentAccountId) return;
+    
     setLoggingIn(true);
     try {
       // 这里应该调用登录API，暂时模拟
       await new Promise(resolve => setTimeout(resolve, 1000));
-      const next = await api.getStatus();
+      const next = await api.accounts.getStatus(currentAccountId);
       setStatus(next);
     } catch (error) {
       console.error('Failed to login:', error);
@@ -105,11 +113,13 @@ export function StatusCard({ initial }: StatusCardProps) {
   };
 
   const handleLogout = async () => {
+    if (!currentAccountId) return;
+    
     setLoggingOut(true);
     try {
       // 这里应该调用登出API，暂时模拟
       await new Promise(resolve => setTimeout(resolve, 1000));
-      const next = await api.getStatus();
+      const next = await api.accounts.getStatus(currentAccountId);
       setStatus(next);
     } catch (error) {
       console.error('Failed to logout:', error);

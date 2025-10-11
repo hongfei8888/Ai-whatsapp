@@ -42,7 +42,7 @@ async function selectRecipients(contactIds?: string[]): Promise<Contact[]> {
   return prisma.contact.findMany({ where: { consent: true, optedOutAt: null } });
 }
 
-export async function createCampaign(input: CreateCampaignInput): Promise<CampaignWithTemplate> {
+export async function createCampaign(accountId: string, input: CreateCampaignInput): Promise<CampaignWithTemplate> {
   const template = await resolveTemplate(input.templateId);
   const baseContent = input.content ?? template?.content ?? '';
   const content = normalizeContent(baseContent);
@@ -61,6 +61,7 @@ export async function createCampaign(input: CreateCampaignInput): Promise<Campai
 
   const campaign = await prisma.campaign.create({
     data: {
+      accountId,
       name: input.name,
       templateId: template ? template.id : null,
       content,

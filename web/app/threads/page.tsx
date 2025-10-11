@@ -264,7 +264,7 @@ export default function ThreadsPage() {
 
   const handleToggleAI = async (threadId: string, currentState: boolean) => {
     try {
-      await api.updateThread(threadId, { aiEnabled: !currentState });
+      await api.setThreadAiEnabled(threadId, !currentState);
       // 重新加载
       loadThreads();
       if (selectedThread?.id === threadId) {

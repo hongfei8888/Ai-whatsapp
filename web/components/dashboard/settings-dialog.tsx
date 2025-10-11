@@ -17,6 +17,7 @@ import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { api } from '@/lib/api';
+import { useAccount } from '@/lib/account-context';
 
 interface SettingsDialogProps {
   open: boolean;
@@ -24,6 +25,7 @@ interface SettingsDialogProps {
 }
 
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
+  const { currentAccountId } = useAccount();
   const [settings, setSettings] = useState({
     cooldownHours: 24,
     perContactCooldown: 10,
@@ -44,9 +46,14 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   }, [open]);
 
   const loadSettings = async () => {
+    if (!currentAccountId) {
+      setMessage({ type: 'error', content: '请先选择账号' });
+      return;
+    }
+    
     setIsLoading(true);
     try {
-      const status = await api.getStatus();
+      const status = await api.accounts.getStatus(currentAccountId);
       setSettings(prev => ({
         ...prev,
         cooldownHours: status.cooldownHours || 24,
@@ -89,7 +96,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={() => {
+      // 🔒 禁止通过遮罩层或ESC键关闭 - 只能通过取消/关闭按钮
+    }}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center gap-3">

@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { WhatsAppColors } from './layout/WhatsAppLayout';
 import AvatarCircle from './AvatarCircle';
 import { api } from '@/lib/api';
+import { useAccount } from '@/lib/account-context';
 
 interface Contact {
   id: string;
@@ -105,7 +106,7 @@ const styles = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: WhatsAppColors.chatBackground,
+    backgroundColor: WhatsAppColors.background,
   },
   toolbarLeft: {
     display: 'flex',
@@ -244,6 +245,7 @@ export default function ContactSelector({
   showStats = true,
   enableVirtualScroll = true,
 }: ContactSelectorProps) {
+  const { currentAccountId } = useAccount();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
@@ -284,30 +286,36 @@ export default function ContactSelector({
   }, [contacts]);
 
   const loadContacts = async () => {
+    if (!currentAccountId) {
+      console.warn('[ContactSelector] 未选择账号，无法加载联系人');
+      setContacts([]);
+      setLoading(false);
+      return;
+    }
+    
     try {
       setLoading(true);
-      const response = await api.getContacts();
-      
-      // 后端返回 { contacts: [...] } 格式
-      const contactsData = response?.contacts || response;
-      const contactList = Array.isArray(contactsData) ? contactsData : [];
+      // 🔄 使用 threads API 获取联系人（contacts API已废弃）
+      const threadsData = await api.getThreads();
+      const contactList = (threadsData.threads || [])
+        .map((t: any) => t.contact)
+        .filter((c: any) => c && c.phoneE164)
+        .map((c: any) => ({
+          id: c.id,
+          phoneE164: c.phoneE164,
+          name: c.name,
+          tags: c.tags || [],
+          avatarUrl: c.avatarUrl,
+          lastContactAt: c.lastContactAt,
+          messageCount: c.messageCount,
+          createdAt: c.createdAt,
+        }));
       
       console.log('[ContactSelector] 加载联系人:', {
-        原始响应: response,
-        提取的联系人数组: contactsData,
         联系人数量: contactList.length
       });
       
-      setContacts(contactList.map((c: any) => ({
-        id: c.id,
-        phoneE164: c.phoneE164,
-        name: c.name,
-        tags: c.tags || [],
-        avatarUrl: c.avatarUrl,
-        lastContactAt: c.lastContactAt,
-        messageCount: c.messageCount,
-        createdAt: c.createdAt,
-      })));
+      setContacts(contactList);
     } catch (error) {
       console.error('加载联系人失败:', error);
       setContacts([]);

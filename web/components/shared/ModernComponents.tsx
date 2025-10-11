@@ -87,13 +87,13 @@ export const ModernButton = ({ kind = 'secondary', children, onClick, disabled, 
                 'rgba(102, 126, 234, 0.1)'
   };
 
-  const [currentStyle, setCurrentStyle] = useState({ ...baseStyle, ...kindStyles[kind] });
+  const [currentStyle, setCurrentStyle] = useState<CSSProperties>({ ...baseStyle, ...kindStyles[kind] });
 
   return (
     <button
       style={currentStyle}
-      onMouseEnter={() => !disabled && setCurrentStyle(hoverStyle)}
-      onMouseLeave={() => !disabled && setCurrentStyle({ ...baseStyle, ...kindStyles[kind] })}
+      onMouseEnter={() => !disabled && setCurrentStyle(hoverStyle as any)}
+      onMouseLeave={() => !disabled && setCurrentStyle({ ...baseStyle, ...kindStyles[kind] } as any)}
       onClick={disabled ? undefined : onClick}
       disabled={disabled}
       {...props}

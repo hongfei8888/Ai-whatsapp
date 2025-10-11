@@ -394,6 +394,7 @@ export default function ChatPage() {
   
   // 新增：UI 状态
   const [showSearch, setShowSearch] = useState(false);
+  const [hoveringMessageId, setHoveringMessageId] = useState<string | null>(null);
   
   // 新增：右键菜单状态
   const [contextMenu, setContextMenu] = useState<{
@@ -455,11 +456,18 @@ export default function ChatPage() {
       if (isNearBottom) {
         setNewMessageCount(0);
       }
+      
+      // 滚动到顶部时加载更多历史消息
+      if (scrollTop < 100 && hasMoreMessages && !loadingMoreMessages) {
+        console.log('📜 滚动到顶部，加载更多历史消息');
+        loadMoreMessages();
+      }
     };
 
     messagesArea.addEventListener('scroll', handleScroll);
     return () => messagesArea.removeEventListener('scroll', handleScroll);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasMoreMessages, loadingMoreMessages]);
 
   useEffect(() => {
     console.log('📊 [useEffect] 消息列表已更新，当前数量:', messages.length);
@@ -551,7 +559,8 @@ export default function ChatPage() {
       // 清空旧消息（避免显示上一个会话的消息）
       setMessages([]);
       
-      const data = await api.getThreadMessages(id);
+      // 使用分页加载，首次加载最近50条
+      const data = await api.getThreadMessages(id, 50);
       console.log('🔄 [loadThread] 收到数据:', data);
       console.log('🔄 [loadThread] 消息数量:', data.messages?.length || 0);
       console.log('🔄 [loadThread] Contact 信息:', data.contact);
@@ -575,6 +584,9 @@ export default function ChatPage() {
       // 直接设置新消息（不合并，因为已经清空）
       setMessages(data.messages || []);
       
+      // 设置是否还有更多消息
+      setHasMoreMessages(msgs.length >= 50);
+      
       // 新增：加载草稿
       try {
         const draft = await api.threads.getDraft(id);
@@ -587,6 +599,7 @@ export default function ChatPage() {
       }
       
       console.log('🔄 [loadThread] ✅ 状态已更新，消息已设置到 state');
+      console.log('📊 分页状态:', { loaded: msgs.length, hasMore: msgs.length >= 50 });
       
       // ✅ 加载完成后立即滚动到底部
       setTimeout(() => scrollToBottom(true), 100);
@@ -601,14 +614,19 @@ export default function ChatPage() {
 
   // 新增：加载更多历史消息
   const loadMoreMessages = useCallback(async () => {
-    if (!threadId || loadingMoreMessages || !hasMoreMessages) return;
+    if (!threadId || loadingMoreMessages || !hasMoreMessages) {
+      console.log('⏭️ 跳过加载更多:', { threadId, loadingMoreMessages, hasMoreMessages });
+      return;
+    }
     
     try {
       setLoadingMoreMessages(true);
+      console.log('🔍 加载更多历史消息...');
       
       // 获取最早的消息时间
       const oldestMessage = messages[0];
       const before = oldestMessage?.createdAt;
+      console.log('📅 最早消息时间:', before);
       
       // 使用新的分页 API
       const data = await api.getThreadMessagesMore(threadId, { 
@@ -616,27 +634,38 @@ export default function ChatPage() {
         before 
       });
       
+      console.log('✅ 收到历史消息:', data.messages?.length || 0, '条');
+      
       if (data.messages && data.messages.length > 0) {
         // 保存当前滚动位置
-        const container = document.querySelector('[style*="overflowY"]') as HTMLDivElement;
+        const container = messagesAreaRef.current;
         const oldScrollHeight = container?.scrollHeight || 0;
+        const scrollTopBefore = container?.scrollTop || 0;
         
         // 添加历史消息到列表顶部
         setMessages((prev) => [...data.messages, ...prev]);
         setHasMoreMessages(data.hasMore || false);
         
-        // 恢复滚动位置
+        console.log('📊 加载更多完成:', {
+          newMessages: data.messages.length,
+          totalMessages: messages.length + data.messages.length,
+          hasMore: data.hasMore
+        });
+        
+        // 恢复滚动位置（保持在原来的消息位置）
         setTimeout(() => {
           if (container) {
             const newScrollHeight = container.scrollHeight;
-            container.scrollTop = newScrollHeight - oldScrollHeight;
+            container.scrollTop = scrollTopBefore + (newScrollHeight - oldScrollHeight);
+            console.log('📜 滚动位置已恢复');
           }
         }, 0);
       } else {
+        console.log('✅ 没有更多历史消息了');
         setHasMoreMessages(false);
       }
     } catch (error) {
-      console.error('加载历史消息失败:', error);
+      console.error('❌ 加载历史消息失败:', error);
     } finally {
       setLoadingMoreMessages(false);
     }
@@ -1272,6 +1301,33 @@ export default function ChatPage() {
     <>
       {/* 对话头部 */}
       <div style={styles.chatHeader}>
+        <button
+          onClick={() => router.push('/chat')}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: WhatsAppColors.textSecondary,
+            fontSize: '20px',
+            cursor: 'pointer',
+            padding: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: '50%',
+            width: '40px',
+            height: '40px',
+            transition: 'background-color 0.2s',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.05)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'transparent';
+          }}
+          title="返回聊天列表"
+        >
+          ←
+        </button>
         <div style={styles.chatAvatar}>
           {getInitials(currentThread.contact?.name || currentThread.contact?.phoneE164)}
         </div>
@@ -1364,6 +1420,38 @@ export default function ChatPage() {
           </div>
         ) : (
           <>
+            {/* 加载更多提示 */}
+            {loadingMoreMessages && (
+              <div style={{
+                textAlign: 'center',
+                padding: '10px',
+                color: WhatsAppColors.textSecondary,
+                fontSize: '13px',
+              }}>
+                加载中...
+              </div>
+            )}
+            {!loadingMoreMessages && hasMoreMessages && (
+              <div style={{
+                textAlign: 'center',
+                padding: '10px',
+                color: WhatsAppColors.textSecondary,
+                fontSize: '13px',
+              }}>
+                向上滚动加载更多历史消息
+              </div>
+            )}
+            {!hasMoreMessages && messages.length > 0 && (
+              <div style={{
+                textAlign: 'center',
+                padding: '10px',
+                color: WhatsAppColors.textSecondary,
+                fontSize: '13px',
+              }}>
+                已加载全部消息
+              </div>
+            )}
+            
             {Object.entries(messageGroups).map(([date, msgs]: [string, any]) => (
               <div key={date}>
                 {/* 日期分隔符 */}
@@ -1375,6 +1463,8 @@ export default function ChatPage() {
                 {msgs.map((message: any, index: number) => {
                   const isEditing = editingMessageId === message.id;
                   const isDeleted = message.isDeleted;
+                  const isHovering = hoveringMessageId === message.id;
+                  const isTranslating = translatingMessages.has(message.id);
                   
                   return (
                     <div
@@ -1382,9 +1472,52 @@ export default function ChatPage() {
                       style={{
                         ...styles.messageGroup,
                         ...(message.fromMe ? styles.messageGroupRight : {}),
+                        position: 'relative',
                       }}
+                      onMouseEnter={() => setHoveringMessageId(message.id)}
+                      onMouseLeave={() => setHoveringMessageId(null)}
                       onContextMenu={(e) => !isDeleted && handleMessageContextMenu(e, message)}
                     >
+                      {/* 🌐 悬停时显示翻译按钮 */}
+                      {isHovering && message.text && !message.translatedText && !isDeleted && (
+                        <button
+                          onClick={() => translateMessage(message.id)}
+                          disabled={isTranslating}
+                          style={{
+                            position: 'absolute',
+                            top: '8px',
+                            [message.fromMe ? 'left' : 'right']: '-32px',
+                            width: '28px',
+                            height: '28px',
+                            borderRadius: '50%',
+                            border: 'none',
+                            backgroundColor: WhatsAppColors.inputBackground,
+                            color: WhatsAppColors.textSecondary,
+                            cursor: isTranslating ? 'wait' : 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '14px',
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                            transition: 'all 0.2s',
+                            opacity: isTranslating ? 0.6 : 1,
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!isTranslating) {
+                              e.currentTarget.style.backgroundColor = WhatsAppColors.accent;
+                              e.currentTarget.style.color = '#fff';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = WhatsAppColors.inputBackground;
+                            e.currentTarget.style.color = WhatsAppColors.textSecondary;
+                          }}
+                          title={isTranslating ? '翻译中...' : '翻译此消息'}
+                        >
+                          {isTranslating ? '⏳' : '🌐'}
+                        </button>
+                      )}
+                      
                       <div
                         style={{
                           ...styles.messageBubble,

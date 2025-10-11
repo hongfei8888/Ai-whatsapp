@@ -18,7 +18,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { AddAccountDialog } from '@/components/AddAccountDialog';
+import { AddAccountDialog } from '@/components/account/AddAccountDialog';
 import { SettingsDialog } from '@/components/dashboard/settings-dialog';
 import { StatusDialog } from '@/components/dashboard/status-dialog';
 import { AccountDialog } from '@/components/dashboard/account-dialog';

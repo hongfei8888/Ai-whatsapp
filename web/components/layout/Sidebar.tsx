@@ -2,7 +2,10 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import { WhatsAppColors } from './WhatsAppLayout';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+import { useAccount } from '@/lib/account-context';
+import { AccountSwitcher } from '@/components/account/AccountSwitcher';
+import { AddAccountDialog } from '@/components/account/AddAccountDialog';
 
 // 左侧功能导航栏组件
 
@@ -16,11 +19,17 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { id: 'dashboard', label: '仪表盘', icon: '📊', path: '/dashboard' },
-  { id: 'chat', label: '聊天/会话', icon: '💬', path: '/chat' },
-  { id: 'contacts', label: '联系人', icon: '👥', path: '/contacts' },
-  { id: 'templates', label: '模板', icon: '📝', path: '/templates' },
-  { id: 'batch', label: '批量操作', icon: '📤', path: '/batch' },
+  { id: 'chat', label: '对话', icon: '💬', path: '/chat' },
+  { id: 'contacts', label: '通讯录', icon: '👥', path: '/contacts' },
+  { id: 'templates', label: '消息模板', icon: '📝', path: '/templates' },
+  { id: 'batch', label: '消息群发', icon: '📤', path: '/batch' },
   { id: 'knowledge', label: '知识库', icon: '📚', path: '/knowledge' },
+  { 
+    id: 'groups', 
+    label: '社群营销', 
+    icon: '📱', 
+    path: '/groups',
+  },
   { id: 'settings', label: '设置', icon: '⚙️', path: '/settings' },
 ];
 
@@ -128,10 +137,31 @@ export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
+  const [accountSwitcherOpen, setAccountSwitcherOpen] = useState(false);
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const accountButtonRef = useRef<HTMLDivElement>(null);
+  
+  const { accounts, currentAccountId, refreshAccounts } = useAccount();
+  
+  // 获取当前账号
+  const currentAccount = accounts.find(acc => acc.id === currentAccountId);
+  
+  // 获取账号缩写
+  const getAccountInitials = (account: any) => {
+    if (!account || !account.name) return '?';
+    const words = account.name.trim().split(/\s+/);
+    if (words.length >= 2) {
+      return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+    }
+    return account.name.substring(0, 2).toUpperCase();
+  };
 
   const isActive = (path: string) => {
     if (path === '/chat') {
       return pathname === '/chat' || pathname.startsWith('/chat/');
+    }
+    if (path === '/groups') {
+      return pathname.startsWith('/groups');
     }
     return pathname === path;
   };
@@ -145,18 +175,91 @@ export default function Sidebar() {
   };
 
   return (
-    <div style={styles.container}>
-      {/* Logo/Header */}
-      <div style={styles.header}>
-        <div 
-          style={styles.logo}
-          onClick={() => router.push('/dashboard')}
-          onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
-          onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-        >
-          W
+    <>
+      <div style={styles.container}>
+        {/* 账号切换器 */}
+        <div style={{
+          padding: '12px 0',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          borderBottom: `1px solid ${WhatsAppColors.border}`,
+        }}>
+          <div 
+            ref={accountButtonRef}
+            style={{
+              width: '48px',
+              height: '48px',
+              borderRadius: '50%',
+              background: currentAccount?.status === 'online' 
+                ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                : 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '18px',
+              fontWeight: '700',
+              color: '#fff',
+              cursor: 'pointer',
+              transition: 'all 0.3s',
+              position: 'relative',
+              boxShadow: accountSwitcherOpen 
+                ? '0 0 0 3px rgba(59, 130, 246, 0.3)'
+                : '0 2px 8px rgba(0, 0, 0, 0.1)'
+            }}
+            onClick={() => setAccountSwitcherOpen(!accountSwitcherOpen)}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'scale(1.1)';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.2)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'scale(1)';
+              e.currentTarget.style.boxShadow = accountSwitcherOpen
+                ? '0 0 0 3px rgba(59, 130, 246, 0.3)'
+                : '0 2px 8px rgba(0, 0, 0, 0.1)';
+            }}
+          >
+            {currentAccount ? getAccountInitials(currentAccount) : '?'}
+            
+            {/* 在线状态点 */}
+            {currentAccount?.status === 'online' && (
+              <div style={{
+                position: 'absolute',
+                bottom: '2px',
+                right: '2px',
+                width: '12px',
+                height: '12px',
+                borderRadius: '50%',
+                backgroundColor: '#10b981',
+                border: '2px solid #fff',
+                boxShadow: '0 0 0 2px rgba(16, 185, 129, 0.2)'
+              }} />
+            )}
+            
+            {/* 账号数量徽章 */}
+            {accounts.length > 1 && (
+              <div style={{
+                position: 'absolute',
+                top: '-4px',
+                right: '-4px',
+                minWidth: '20px',
+                height: '20px',
+                borderRadius: '10px',
+                backgroundColor: '#ef4444',
+                color: '#fff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '11px',
+                fontWeight: '700',
+                padding: '0 5px',
+                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)'
+              }}>
+                {accounts.length}
+              </div>
+            )}
+          </div>
         </div>
-      </div>
 
       {/* 导航菜单 */}
       <div style={styles.nav}>
@@ -203,10 +306,31 @@ export default function Sidebar() {
           onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
           onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
         >
-          👤
+          ⚙️
         </div>
       </div>
     </div>
+    
+    {/* 账号切换器弹出窗口 */}
+    <AccountSwitcher
+      isOpen={accountSwitcherOpen}
+      onClose={() => setAccountSwitcherOpen(false)}
+      triggerRef={accountButtonRef}
+      onOpenAddDialog={() => setAddDialogOpen(true)}
+    />
+    
+    {/* 添加账号对话框 */}
+    <AddAccountDialog 
+      open={addDialogOpen} 
+      onOpenChange={setAddDialogOpen}
+      onSuccess={() => {
+        setAddDialogOpen(false);
+        refreshAccounts();
+        // 添加账号成功后，关闭账号切换窗口
+        setAccountSwitcherOpen(false);
+      }}
+    />
+    </>
   );
 }
 

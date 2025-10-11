@@ -1,10 +1,12 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { wsManager } from './websocketManager';
+import { useAccount } from './account-context';
 
 interface WebSocketMessage {
   type: string;
   data: any;
   timestamp: number;
+  accountId?: string; // 🔥 添加账号 ID 字段
 }
 
 interface WebSocketHookOptions {
@@ -16,6 +18,12 @@ interface WebSocketHookOptions {
   onDisconnect?: () => void;
   autoReconnect?: boolean;
   reconnectInterval?: number;
+  // 社群营销相关事件
+  onJoinTaskProgress?: (data: any) => void;
+  onJoinTaskCompleted?: (data: any) => void;
+  onJoinTaskFailed?: (data: any) => void;
+  onBroadcastProgress?: (data: any) => void;
+  onGroupMessage?: (data: any) => void;
 }
 
 export function useWebSocket(options: WebSocketHookOptions = {}) {
@@ -28,8 +36,15 @@ export function useWebSocket(options: WebSocketHookOptions = {}) {
     onDisconnect,
     autoReconnect = true,
     reconnectInterval = 3000,
+    // 社群营销相关回调
+    onJoinTaskProgress,
+    onJoinTaskCompleted,
+    onJoinTaskFailed,
+    onBroadcastProgress,
+    onGroupMessage,
   } = options;
 
+  const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isConnectedRef = useRef(false);
@@ -76,6 +91,22 @@ export function useWebSocket(options: WebSocketHookOptions = {}) {
             break;
           case 'qr_update':
             onQRUpdate?.(message.data.qr);
+            break;
+          // 社群营销相关事件
+          case 'join_task_progress':
+            onJoinTaskProgress?.(message.data);
+            break;
+          case 'join_task_completed':
+            onJoinTaskCompleted?.(message.data);
+            break;
+          case 'join_task_failed':
+            onJoinTaskFailed?.(message.data);
+            break;
+          case 'broadcast_progress':
+            onBroadcastProgress?.(message.data);
+            break;
+          case 'group_message':
+            onGroupMessage?.(message.data);
             break;
           default:
             break;
@@ -129,6 +160,31 @@ export function useWebSocket(options: WebSocketHookOptions = {}) {
     
     // 订阅消息
     const unsubscribe = wsManager.subscribe((message: WebSocketMessage) => {
+      // 🔥 多账号消息过滤：只处理属于当前账号的消息
+      // 注意：有些消息类型（如 connected）不需要账号过滤
+      const needsAccountFilter = [
+        'new_message',
+        'whatsapp_status', 
+        'qr_update',
+        'join_task_progress',
+        'join_task_completed',
+        'join_task_failed',
+        'broadcast_progress',
+        'group_message',
+      ].includes(message.type);
+      
+      // 如果需要过滤但 accountId 不匹配，则忽略此消息
+      // 注意：某些旧消息可能没有 accountId，这些消息仍然会被处理（向后兼容）
+      if (needsAccountFilter && message.accountId) {
+        // 我们不能在这里直接使用 useAccount，因为这是在 callback 中
+        // 所以改为在外层获取 currentAccountId
+        // 暂时注释掉过滤，让调用者自己决定是否过滤
+        // TODO: 如果需要严格过滤，可以将 currentAccountId 作为依赖传入
+      }
+      
+      // 更新最后一条消息
+      setLastMessage(message);
+      
       // 调用通用消息处理器
       onMessage?.(message);
 
@@ -146,6 +202,23 @@ export function useWebSocket(options: WebSocketHookOptions = {}) {
         case 'qr_update':
           onQRUpdate?.(message.data.qr);
           break;
+        // 社群营销相关事件
+        case 'join_task_progress':
+          onJoinTaskProgress?.(message.data);
+          break;
+        case 'join_task_completed':
+          onJoinTaskCompleted?.(message.data);
+          break;
+        case 'join_task_failed':
+          onJoinTaskFailed?.(message.data);
+          break;
+        case 'broadcast_progress':
+          onBroadcastProgress?.(message.data);
+          break;
+        case 'group_message':
+          console.log('📨 [Hook] 收到群组消息事件:', message.data);
+          onGroupMessage?.(message.data);
+          break;
         default:
           break;
       }
@@ -155,13 +228,64 @@ export function useWebSocket(options: WebSocketHookOptions = {}) {
       console.log('🔧 [Hook] 取消订阅');
       unsubscribe();
     };
-  }, [onMessage, onNewMessage, onStatusUpdate, onQRUpdate, onConnect, onDisconnect]);
+  }, [onMessage, onNewMessage, onStatusUpdate, onQRUpdate, onConnect, onDisconnect, onJoinTaskProgress, onJoinTaskCompleted, onJoinTaskFailed, onBroadcastProgress, onGroupMessage]);
 
   return {
     isConnected: isConnectedRef.current,
+    lastMessage,
     send,
     connect,
     disconnect,
   };
+}
+
+/**
+ * 🔥 增强版 WebSocket Hook - 自动过滤当前账号的消息
+ * 
+ * 与 useWebSocket 相同，但会自动过滤只属于当前账号的消息
+ * 使用场景：在需要监听 WebSocket 消息的组件中，自动过滤属于当前账号的消息
+ */
+export function useAccountWebSocket(options: WebSocketHookOptions = {}) {
+  const { currentAccountId } = useAccount();
+  
+  // 包装回调函数，添加账号过滤
+  const wrappedOptions: WebSocketHookOptions = {
+    ...options,
+    onMessage: options.onMessage ? (message: WebSocketMessage) => {
+      // 如果消息包含 accountId，只处理属于当前账号的消息
+      if (message.accountId && message.accountId !== currentAccountId) {
+        console.debug(`[AccountWebSocket] 忽略其他账号的消息: ${message.type} from ${message.accountId}`);
+        return;
+      }
+      options.onMessage?.(message);
+    } : undefined,
+    
+    onNewMessage: options.onNewMessage ? (data: any) => {
+      // 新消息通常包含 accountId
+      if (data.accountId && data.accountId !== currentAccountId) {
+        return;
+      }
+      options.onNewMessage?.(data);
+    } : undefined,
+    
+    onStatusUpdate: options.onStatusUpdate ? (data: any) => {
+      // 状态更新包含 accountId
+      if (data.accountId && data.accountId !== currentAccountId) {
+        return;
+      }
+      options.onStatusUpdate?.(data);
+    } : undefined,
+    
+    onQRUpdate: options.onQRUpdate,
+    onConnect: options.onConnect,
+    onDisconnect: options.onDisconnect,
+    onJoinTaskProgress: options.onJoinTaskProgress,
+    onJoinTaskCompleted: options.onJoinTaskCompleted,
+    onJoinTaskFailed: options.onJoinTaskFailed,
+    onBroadcastProgress: options.onBroadcastProgress,
+    onGroupMessage: options.onGroupMessage,
+  };
+  
+  return useWebSocket(wrappedOptions);
 }
 

@@ -3,11 +3,14 @@ import { appConfig } from '../config';
 import { ensureNoForbiddenKeyword } from '../guards/keyword-guard';
 import { logger } from '../logger';
 import { prisma } from '../prisma';
-import { whatsappService } from '../whatsapp-service';
+import type { WPPConnectService } from '../wppconnect-service';
 import { createContact } from './contact-service';
 import { recordMessage } from './message-service';
 import { renderCampaignMessage, updateCampaignCounters, maybeCompleteCampaign } from './campaign-service';
 import { getOrCreateThread, updateThread } from './thread-service';
+
+// TODO: campaign-runner 需要重构以支持多账号
+// 当前设计使用全局定时器，需要改为每个账号独立的运行器
 
 const TICK_INTERVAL_MS = 1000;
 let timer: NodeJS.Timeout | null = null;
@@ -100,7 +103,7 @@ async function handleSend(campaign: Awaited<ReturnType<typeof prisma.campaign.fi
     return;
   }
 
-  const targetContact = contact ?? await ensureTransientContact(recipient.phoneE164);
+  const targetContact = contact ?? await ensureTransientContact(campaign.accountId, recipient.phoneE164);
 
   if (!targetContact) {
     await prisma.campaignRecipient.update({
@@ -114,23 +117,29 @@ async function handleSend(campaign: Awaited<ReturnType<typeof prisma.campaign.fi
   }
 
 
+  // TODO: 需要从 AccountManager 获取对应账号的 whatsappService 实例
+  const accountId = campaign.accountId;
+  
   const message = renderCampaignMessage(campaign, { contact: targetContact });
   ensureNoForbiddenKeyword(message);
 
-  const thread = await getOrCreateThread(targetContact.id);
+  const thread = await getOrCreateThread(accountId, targetContact.id);
 
-  if (whatsappService.getStatus().status !== 'READY') {
-    throw new Error('WhatsApp client not ready');
-  }
-
-  const sendResult = await whatsappService.sendTextMessage(targetContact.phoneE164, message);
-
-  await recordMessage({
-    threadId: thread.id,
-    direction: MessageDirection.OUT,
-    text: message,
-    externalId: sendResult.id ?? null,
-  });
+  // TODO: 需要获取对应账号的 whatsappService 实例
+  // if (whatsappService.getStatus().status !== 'READY') {
+  //   throw new Error('WhatsApp client not ready');
+  // }
+  // const sendResult = await whatsappService.sendTextMessage(targetContact.phoneE164, message);
+  
+  throw new Error('Campaign runner needs refactoring for multi-account support');
+  
+  // await recordMessage({
+  //   accountId,
+  //   threadId: thread.id,
+  //   direction: MessageDirection.OUT,
+  //   text: message,
+  //   externalId: sendResult.id ?? null,
+  // });
 
   const now = new Date();
   await Promise.all([
@@ -146,12 +155,19 @@ async function handleSend(campaign: Awaited<ReturnType<typeof prisma.campaign.fi
   ]);
 }
 
-async function ensureTransientContact(phoneE164: string) {
-  const existing = await prisma.contact.findUnique({ where: { phoneE164 } });
+async function ensureTransientContact(accountId: string, phoneE164: string) {
+  const existing = await prisma.contact.findUnique({ 
+    where: { 
+      accountId_phoneE164: {
+        accountId,
+        phoneE164
+      }
+    }
+  });
   if (existing) {
     return existing;
   }
-  return createContact({ phoneE164 });
+  return createContact(accountId, { phoneE164 });
 }
 
 async function onSendFailure(recipientId: string, reason: string): Promise<void> {

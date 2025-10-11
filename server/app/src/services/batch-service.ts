@@ -1,7 +1,8 @@
 import { prisma } from '../prisma';
 import { z } from 'zod';
 import { logger } from '../logger';
-import { whatsappService } from '../whatsapp-service';
+import type { WPPConnectService } from '../wppconnect-service';
+import type { AccountManager } from './account-manager';
 import { recordMessageIfMissing } from './message-service';
 import { getOrCreateThread } from './thread-service';
 
@@ -139,11 +140,12 @@ export const batchTagSchema = z.object({
 // 批量操作服务类
 export class BatchService {
   // 批量导入联系人
-  static async importContacts(config: BatchImportConfig): Promise<BatchOperation> {
+  static async importContacts(accountId: string, config: BatchImportConfig): Promise<BatchOperation> {
     const validatedConfig = batchImportSchema.parse(config);
     
     const batch = await prisma.batchOperation.create({
       data: {
+        accountId,
         type: 'import',
         status: 'pending',
         title: '批量导入联系人',
@@ -176,7 +178,7 @@ export class BatchService {
   }
 
   // 批量发送消息
-  static async sendBatchMessages(config: BatchSendConfig): Promise<BatchOperation> {
+  static async sendBatchMessages(accountId: string, config: BatchSendConfig, accountManager: AccountManager): Promise<BatchOperation> {
     const validatedConfig = batchSendSchema.parse(config);
     
     // 获取目标联系人
@@ -185,7 +187,7 @@ export class BatchService {
     if (validatedConfig.contactIds?.length) {
       contactIds = validatedConfig.contactIds;
     } else if (validatedConfig.contactFilters) {
-      const where: any = {};
+      const where: any = { accountId };
       
       if (validatedConfig.contactFilters.tags?.length) {
         where.tags = { hasSome: validatedConfig.contactFilters.tags };
@@ -213,6 +215,7 @@ export class BatchService {
 
     const batch = await prisma.batchOperation.create({
       data: {
+        accountId,
         type: 'send',
         status: 'pending',
         title: '批量发送消息',
@@ -235,9 +238,20 @@ export class BatchService {
       select: { id: true, phoneE164: true, name: true },
     });
 
+    // 过滤掉没有有效电话号码的联系人
+    const validContacts = contacts.filter(c => c.phoneE164 && c.phoneE164.trim() !== '');
+    const invalidContacts = contacts.filter(c => !c.phoneE164 || c.phoneE164.trim() === '');
+
+    if (invalidContacts.length > 0) {
+      logger.warn('Some contacts have invalid phone numbers and will be skipped', {
+        count: invalidContacts.length,
+        contactIds: invalidContacts.map(c => c.id)
+      } as any);
+    }
+
     // 验证找到的联系人数量
-    if (contacts.length === 0) {
-      throw new Error('No valid contacts found for batch send');
+    if (validContacts.length === 0) {
+      throw new Error('No valid contacts with phone numbers found for batch send');
     }
 
     if (contacts.length !== contactIds.length) {
@@ -246,7 +260,7 @@ export class BatchService {
       logger.warn('Some contact IDs not found in database', { missingIds } as any);
     }
 
-    const items = contacts.map((contact, index) => ({
+    const items = validContacts.map((contact, index) => ({
       batchId: batch.id,
       itemIndex: index,
       itemData: JSON.stringify({
@@ -264,23 +278,24 @@ export class BatchService {
     await prisma.batchOperation.update({
       where: { id: batch.id },
       data: {
-        totalCount: contacts.length,
+        totalCount: validContacts.length,
         description: `向 ${contacts.length} 个联系人发送消息`,
       },
     });
 
     // 异步处理批量发送
-    this.processBatchSend(batch.id);
+    this.processBatchSend(batch.id, accountManager);
     
     return batch as any;
   }
 
   // 批量标签管理
-  static async manageTags(config: BatchTagConfig): Promise<BatchOperation> {
+  static async manageTags(accountId: string, config: BatchTagConfig): Promise<BatchOperation> {
     const validatedConfig = batchTagSchema.parse(config);
     
     const batch = await prisma.batchOperation.create({
       data: {
+        accountId,
         type: 'tag',
         status: 'pending',
         title: '批量标签管理',
@@ -312,13 +327,14 @@ export class BatchService {
   }
 
   // 批量删除联系人
-  static async deleteContacts(contactIds: string[]): Promise<BatchOperation> {
+  static async deleteContacts(accountId: string, contactIds: string[]): Promise<BatchOperation> {
     if (contactIds.length === 0) {
       throw new Error('No contacts to delete');
     }
 
     const batch = await prisma.batchOperation.create({
       data: {
+        accountId,
         type: 'delete',
         status: 'pending',
         title: '批量删除联系人',
@@ -454,6 +470,8 @@ export class BatchService {
 
     if (!batch) return;
 
+    const accountId = batch.accountId;
+
     try {
       await prisma.batchOperation.update({
         where: { id: batchId },
@@ -478,7 +496,12 @@ export class BatchService {
           
           // 检查联系人是否已存在
           const existing = await prisma.contact.findUnique({
-            where: { phoneE164: contactData.phoneE164 },
+            where: { 
+              accountId_phoneE164: {
+                accountId,
+                phoneE164: contactData.phoneE164
+              }
+            },
           });
 
           if (existing) {
@@ -515,6 +538,7 @@ export class BatchService {
             // 创建新联系人
             await prisma.contact.create({
               data: {
+                accountId,
                 phoneE164: contactData.phoneE164,
                 name: contactData.name,
                 tags: Array.from(new Set([
@@ -592,17 +616,30 @@ export class BatchService {
   }
 
   // 处理批量发送
-  private static async processBatchSend(batchId: string) {
+  private static async processBatchSend(batchId: string, accountManager: AccountManager) {
     const batch = await prisma.batchOperation.findUnique({
       where: { id: batchId },
     });
 
     if (!batch) return;
 
+    const accountId = batch.accountId;
+
     // 创建任务控制器
     const controller = TaskManager.createTask(batchId);
 
     try {
+      // 获取WhatsApp服务实例
+      const whatsappService = accountManager.getAccountService(accountId);
+      if (!whatsappService) {
+        throw new Error(`Account not found or not started: ${accountId}`);
+      }
+
+      logger.info('Starting batch send process', { 
+        batchId: batchId, 
+        accountId: accountId 
+      } as any);
+
       await prisma.batchOperation.update({
         where: { id: batchId },
         data: { 
@@ -620,19 +657,6 @@ export class BatchService {
       let successCount = 0;
       let failedCount = 0;
 
-      // 获取WhatsApp服务实例
-      
-      // 检查WhatsApp服务是否就绪
-      const whatsappStatus = whatsappService.getStatus();
-      if (whatsappStatus.status !== 'READY') {
-        logger.error('WhatsApp service not ready', { 
-          status: whatsappStatus.status,
-          state: whatsappStatus.state,
-          phoneE164: whatsappStatus.phoneE164
-        } as any);
-        throw new Error(`WhatsApp service is not ready, status: ${whatsappStatus.status}`);
-      }
-
       // 获取发送内容
       let messageContent = '';
       if (config.templateId) {
@@ -641,8 +665,8 @@ export class BatchService {
           where: { id: config.templateId },
           select: { content: true },
         });
-        if (!template) {
-          throw new Error(`Template not found: ${config.templateId}`);
+        if (!template || !template.content) {
+          throw new Error(`Template not found or has no content: ${config.templateId}`);
         }
         messageContent = template.content;
       } else if (config.content) {
@@ -692,10 +716,11 @@ export class BatchService {
           } as any);
           
           // 获取或创建线程
-          const thread = await getOrCreateThread(itemData.contactId);
+          const thread = await getOrCreateThread(accountId, itemData.contactId);
           
           // 保存消息到数据库（使用recordMessageIfMissing避免重复保存）
           const message = await recordMessageIfMissing({
+            accountId,
             threadId: thread.id,
             direction: MessageDirection.OUT,
             text: messageContent,
@@ -724,14 +749,14 @@ export class BatchService {
               logger.info('Using existing message from database', { 
                 batchId, 
                 contactId: itemData.contactId,
-                messageId: existingMessage.id
+                messageId: existingMessage?.id || 'unknown'
               } as any);
             }
           } else {
             logger.info('Message saved to database', { 
               batchId, 
               contactId: itemData.contactId,
-              messageId: message.id
+              messageId: message?.id || 'unknown'
             } as any);
           }
           

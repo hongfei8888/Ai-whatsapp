@@ -1,17 +1,8 @@
+'use client';
+
 import React from 'react';
 import { PieChart as RechartsPieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-
-export const WhatsAppColors = {
-  accent: '#00a884',
-  success: '#00a884',
-  danger: '#e74c3c',
-  warning: '#f39c12',
-  info: '#3498db',
-  panelBackground: '#ffffff',
-  border: '#e9edef',
-  textPrimary: '#111b21',
-  textSecondary: '#667781',
-};
+import { useTheme } from '@/lib/theme-context';
 
 interface PieChartProps {
   data: Array<{
@@ -23,23 +14,18 @@ interface PieChartProps {
   height?: number;
 }
 
-const DEFAULT_COLORS = [
-  WhatsAppColors.success,
-  WhatsAppColors.danger,
-  WhatsAppColors.warning,
-  WhatsAppColors.info,
-  '#9b59b6',
-  '#e67e22',
-];
-
 export default function PieChart({ data, title, height = 300 }: PieChartProps) {
+  const { colors } = useTheme();
+
+  const DEFAULT_COLORS = colors.chartColors;
+
   return (
     <div style={{ width: '100%' }}>
       {title && (
         <div style={{
           fontSize: '16px',
           fontWeight: '600',
-          color: WhatsAppColors.textPrimary,
+          color: colors.textPrimary,
           marginBottom: '16px',
         }}>
           {title}
@@ -52,10 +38,11 @@ export default function PieChart({ data, title, height = 300 }: PieChartProps) {
             cx="50%"
             cy="50%"
             labelLine={false}
-            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+            label={({ name, percent }: any) => `${name}: ${((percent as number) * 100).toFixed(0)}%`}
             outerRadius={80}
             fill="#8884d8"
             dataKey="value"
+            animationDuration={800}
           >
             {data.map((entry, index) => (
               <Cell
@@ -66,16 +53,17 @@ export default function PieChart({ data, title, height = 300 }: PieChartProps) {
           </Pie>
           <Tooltip
             contentStyle={{
-              backgroundColor: WhatsAppColors.panelBackground,
-              border: `1px solid ${WhatsAppColors.border}`,
+              backgroundColor: colors.panelBackground,
+              border: `1px solid ${colors.border}`,
               borderRadius: '8px',
               fontSize: '13px',
+              color: colors.textPrimary,
             }}
           />
           <Legend
             wrapperStyle={{
               fontSize: '13px',
-              color: WhatsAppColors.textSecondary,
+              color: colors.textSecondary,
             }}
           />
         </RechartsPieChart>

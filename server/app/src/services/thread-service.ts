@@ -47,10 +47,11 @@ export async function getThreadByContactId(contactId: string): Promise<Thread | 
   return prisma.thread.findUnique({ where: { contactId } });
 }
 
-export async function getOrCreateThread(contactId: string): Promise<Thread> {
+export async function getOrCreateThread(accountId: string, contactId: string): Promise<Thread> {
   return prisma.thread.upsert({
     where: { contactId },
     create: {
+      accountId,
       contactId,
       aiEnabled: true, // 默认启用AI自动回复
     },
@@ -72,8 +73,9 @@ export async function updateThread(threadId: string, data: Prisma.ThreadUpdateIn
   });
 }
 
-export async function listThreads(): Promise<ThreadListItem[]> {
+export async function listThreads(accountId: string): Promise<ThreadListItem[]> {
   const threads = await prisma.thread.findMany({
+    where: { accountId },
     include: {
       contact: {
         select: {
@@ -415,8 +417,10 @@ export interface ThreadFilter {
   hasUnread?: boolean;
 }
 
-export async function listThreadsFiltered(filter: ThreadFilter): Promise<ThreadListItem[]> {
-  const where: Prisma.ThreadWhereInput = {};
+export async function listThreadsFiltered(accountId: string, filter: ThreadFilter): Promise<ThreadListItem[]> {
+  const where: Prisma.ThreadWhereInput = {
+    accountId,
+  };
 
   if (filter.isPinned !== undefined) {
     where.isPinned = filter.isPinned;

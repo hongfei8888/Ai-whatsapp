@@ -2,12 +2,17 @@ import Fastify, { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { z, ZodError } from 'zod';
 import { appConfig, isAuthEnabled } from './config';
 import { logger } from './logger';
-import type { WhatsAppService } from './whatsapp-service';
+import type { WPPConnectService } from './wppconnect-service';
+import { AccountManager } from './services/account-manager';
 
-// 扩展 Fastify 类型以包含 whatsappService
+// 扩展 Fastify 类型以包含 accountManager 和 prisma
 declare module 'fastify' {
   interface FastifyInstance {
-    whatsappService: WhatsAppService;
+    accountManager: AccountManager;
+    prisma: typeof prisma;
+  }
+  interface FastifyRequest {
+    accountId?: string;
   }
 }
 import { webSocketService } from './websocket-service';
@@ -63,8 +68,10 @@ import {
   serializeRecipient,
 } from './services/campaign-service';
 import { CampaignRecipientStatus, CampaignStatus } from '@prisma/client';
-import { whatsappService } from './whatsapp-service';
 import { sendError, sendOk } from './http/response';
+import { accountContextMiddleware } from './middleware/account-context';
+import { accountRoutes } from './routes/accounts';
+import { contactRoutes } from './routes/contacts';
 import { prisma } from './prisma';
 import { generatePreviewReply } from './ai/pipeline';
 import { templateRoutes, categoryRoutes } from './routes/templates';
@@ -76,6 +83,7 @@ import { dataManagementRoutes } from './routes/data-management';
 import mediaRoutes from './routes/media';
 import { messageRoutes } from './routes/messages';
 import { threadRoutes } from './routes/threads';
+import { groupRoutes } from './routes/groups';
 import { 
   getSystemSettings, 
   updateSystemSettings 
@@ -310,8 +318,18 @@ export async function buildServer(): Promise<FastifyInstance> {
     requestTimeout: 30 * 60 * 1000, // ✅ 30分钟超时（支持大文件上传）
   });
 
-  // 挂载全局 WhatsApp 服务实例到 Fastify（确保与 websocket-service 监听的是同一个实例）
-  app.decorate('whatsappService', whatsappService);
+  // 初始化 AccountManager
+  const accountManager = new AccountManager(prisma, './.sessions');
+  app.decorate('accountManager', accountManager);
+  app.decorate('prisma', prisma);
+
+  // 加载现有账号
+  try {
+    await accountManager.loadExistingAccounts();
+    logger.info('Accounts loaded successfully');
+  } catch (error) {
+    logger.error({ error }, 'Failed to load accounts');
+  }
 
   // Register CORS plugin
   await app.register(require('@fastify/cors'), {
@@ -337,15 +355,23 @@ export async function buildServer(): Promise<FastifyInstance> {
   }
   app.setErrorHandler(errorHandler);
 
-  app.get('/status', async (_request, reply) => {
+  app.get('/status', async (request, reply) => {
+    const accountId = request.accountId!;
+    const whatsappService = accountManager.getAccountService(accountId);
+    
+    if (!whatsappService) {
+      return sendError(reply, 404, { code: 'ACCOUNT_NOT_FOUND', message: 'Account not found or not started' });
+    }
+    
     const status = whatsappService.getStatus();
     const onlineStates = new Set(['READY', 'AUTHENTICATING']);
     const online = onlineStates.has(status.status);
     const sessionReady = status.status === 'READY';
 
     const [contactCount, latestMessage] = await Promise.all([
-      prisma.contact.count(),
+      prisma.contact.count({ where: { accountId } }),
       prisma.message.aggregate({
+        where: { accountId },
         _max: { createdAt: true },
       }),
     ]);
@@ -366,13 +392,19 @@ export async function buildServer(): Promise<FastifyInstance> {
   });
 
   // 新增：启动登录流程
-  app.post('/auth/login/start', async (_request, reply) => {
+  app.post('/auth/login/start', async (request, reply) => {
     try {
-      logger.info('Received login start request');
+      const accountId = request.accountId!;
+      logger.info({ accountId }, 'Received login start request');
+      
+      const whatsappService = accountManager.getAccountService(accountId);
+      if (!whatsappService) {
+        return sendError(reply, 404, { code: 'ACCOUNT_NOT_FOUND', message: 'Account not found or not started' });
+      }
       
       // 调用真正的WhatsApp服务启动登录
       await whatsappService.startLogin();
-      logger.info('Login process started successfully');
+      logger.info({ accountId }, 'Login process started successfully');
       return sendOk(reply, 200, { 
         message: 'Login process started successfully'
       });
@@ -393,8 +425,15 @@ export async function buildServer(): Promise<FastifyInstance> {
   });
 
   // 增强的二维码端点
-  app.get('/auth/qr', async (_request, reply) => {
+  app.get('/auth/qr', async (request, reply) => {
     try {
+      const accountId = request.accountId!;
+      const whatsappService = accountManager.getAccountService(accountId);
+      
+      if (!whatsappService) {
+        return sendError(reply, 404, { code: 'ACCOUNT_NOT_FOUND', message: 'Account not found or not started' });
+      }
+      
       // 获取真正的WhatsApp状态和二维码
       const status = whatsappService.getStatus();
       return sendOk(reply, 200, {
@@ -425,23 +464,23 @@ export async function buildServer(): Promise<FastifyInstance> {
     return sendOk(reply, 200, { reply: preview });
   });
 
-  app.post('/contacts', async (request, reply) => {
-    const body = createContactSchema.parse(request.body);
-    const contact = await createContact(body);
-    const view = serializeContact(contact);
-    return sendOk(reply, 201, view);
-  });
-
-  app.get('/contacts', async (_request, reply) => {
-    const contacts = await listContacts();
-    return sendOk(reply, 200, {
-      contacts: contacts.map(serializeContact),
-    });
-  });
-
+  // ❌ 已移除旧的基础CRUD路由，现在使用独立的 contacts.ts 路由文件
+  // - POST /contacts -> contacts.ts
+  // - GET /contacts -> contacts.ts
+  // - DELETE /contacts/:id -> contacts.ts
+  
+  // 📞 特殊联系人功能路由（保留在这里）
+  
   // 获取WhatsApp联系人 (必须在 /contacts/:id 之前)
-  app.get('/contacts/whatsapp', async (_request, reply) => {
+  app.get('/contacts/whatsapp', async (request, reply) => {
     try {
+      const accountId = request.accountId!;
+      const whatsappService = accountManager.getAccountService(accountId);
+      
+      if (!whatsappService) {
+        return sendError(reply, 404, { code: 'ACCOUNT_NOT_FOUND', message: 'Account not found or not started' });
+      }
+      
       const whatsappContacts = await whatsappService.getWhatsAppContacts();
       return sendOk(reply, 200, {
         contacts: whatsappContacts,
@@ -454,8 +493,15 @@ export async function buildServer(): Promise<FastifyInstance> {
   });
 
   // 同步WhatsApp联系人到数据库 (必须在 /contacts/:id 之前)
-  app.post('/contacts/sync-whatsapp', async (_request, reply) => {
+  app.post('/contacts/sync-whatsapp', async (request, reply) => {
     try {
+      const accountId = request.accountId!;
+      const whatsappService = accountManager.getAccountService(accountId);
+      
+      if (!whatsappService) {
+        return sendError(reply, 404, { code: 'ACCOUNT_NOT_FOUND', message: 'Account not found or not started' });
+      }
+      
       const result = await whatsappService.syncContactsToDatabase();
       return sendOk(reply, 200, {
         message: 'WhatsApp contacts synced successfully',
@@ -467,23 +513,18 @@ export async function buildServer(): Promise<FastifyInstance> {
     }
   });
 
-  app.delete('/contacts/:id', async (request, reply) => {
-    try {
-      const params = contactIdSchema.parse(request.params);
-      await deleteContact(params.id);
-      return sendOk(reply, 200, { message: 'Contact deleted successfully' });
-    } catch (error) {
-      const params = contactIdSchema.parse(request.params);
-      logger.error({ error, contactId: params.id }, 'Failed to delete contact');
-      return sendError(reply, 500, { code: 'DELETE_CONTACT_FAILED', message: 'Failed to delete contact' });
-    }
-  });
-
+  // POST /contacts/:id/outreach - 发送外联消息
   app.post('/contacts/:id/outreach', async (request, reply) => {
+    const accountId = request.accountId!;
     const params = contactIdSchema.parse(request.params);
     const body = outreachBodySchema.parse(request.body);
+    
+    const whatsappService = accountManager.getAccountService(accountId);
+    if (!whatsappService) {
+      return sendError(reply, 404, { code: 'ACCOUNT_NOT_FOUND', message: 'Account not found or not started' });
+    }
 
-    const result = await sendOutreach({
+    const result = await sendOutreach(accountId, {
       contactId: params.id,
       content: body.content,
     }, async ({ phoneE164, content }) => {
@@ -506,16 +547,22 @@ export async function buildServer(): Promise<FastifyInstance> {
 
   // 文件上传API
   app.post('/contacts/:id/upload', async (request, reply) => {
+    const accountId = request.accountId!;
     const params = contactIdSchema.parse(request.params);
     
     try {
+      const whatsappService = accountManager.getAccountService(accountId);
+      if (!whatsappService) {
+        return sendError(reply, 404, { code: 'ACCOUNT_NOT_FOUND', message: 'Account not found or not started' });
+      }
+      
       const data = await (request as any).file();
       if (!data) {
         return sendError(reply, 400, { code: 'NO_FILE', message: 'No file uploaded' });
       }
 
-      const contact = await getContactById(params.id);
-      const thread = await getOrCreateThread(contact.id);
+      const contact = await getContactById(accountId, params.id);
+      const thread = await getOrCreateThread(accountId, contact.id);
       
       // 保存文件到临时目录
       const uploadDir = './uploads';
@@ -536,6 +583,7 @@ export async function buildServer(): Promise<FastifyInstance> {
       
       // 记录消息到数据库
       const message = await recordMessage({
+        accountId,
         threadId: thread.id,
         direction: MessageDirection.OUT,
         text: `[文件] ${data.filename}`,
@@ -557,8 +605,9 @@ export async function buildServer(): Promise<FastifyInstance> {
     }
   });
 
-  app.get('/threads', async (_request, reply) => {
-    const threads = await listThreads();
+  app.get('/threads', async (request, reply) => {
+    const accountId = request.accountId!;
+    const threads = await listThreads(accountId);
     const now = new Date();
     return sendOk(reply, 200, {
       threads: threads.map((thread) => serializeThreadListItem(thread, now)),
@@ -570,30 +619,37 @@ export async function buildServer(): Promise<FastifyInstance> {
   // 发送消息
   app.post('/messages/send', async (request, reply) => {
     try {
+      const accountId = request.accountId!;
       const body = z.object({
         phoneE164: z.string(),
         content: z.string(),
       }).parse(request.body);
 
-      logger.info({ phoneE164: body.phoneE164, contentLength: body.content.length }, 'Sending message via API');
+      logger.info({ accountId, phoneE164: body.phoneE164, contentLength: body.content.length }, 'Sending message via API');
+
+      const whatsappService = accountManager.getAccountService(accountId);
+      if (!whatsappService) {
+        return sendError(reply, 404, { code: 'ACCOUNT_NOT_FOUND', message: 'Account not found or not started' });
+      }
 
       // 查找或创建联系人
-      let contact = await getContactByPhone(body.phoneE164);
+      let contact = await getContactByPhone(accountId, body.phoneE164);
       if (!contact) {
-        logger.info({ phoneE164: body.phoneE164 }, 'Contact not found, creating new contact');
-        contact = await createContact({ phoneE164: body.phoneE164 });
+        logger.info({ accountId, phoneE164: body.phoneE164 }, 'Contact not found, creating new contact');
+        contact = await createContact(accountId, { phoneE164: body.phoneE164 });
       }
 
       // 获取或创建对话线程
-      const thread = await getOrCreateThread(contact.id);
-      logger.info({ threadId: thread.id, contactId: contact.id }, 'Thread obtained');
+      const thread = await getOrCreateThread(accountId, contact.id);
+      logger.info({ accountId, threadId: thread.id, contactId: contact.id }, 'Thread obtained');
 
       // 发送 WhatsApp 消息
       const response = await whatsappService.sendTextMessage(body.phoneE164, body.content);
-      logger.info({ responseId: response.id }, 'WhatsApp message sent');
+      logger.info({ accountId, responseId: response.id }, 'WhatsApp message sent');
 
       // 记录消息到数据库（如果已存在则跳过）
       let message = await recordMessageIfMissing({
+        accountId,
         threadId: thread.id,
         externalId: response.id ?? null,
         direction: 'OUT' as MessageDirection,
@@ -603,9 +659,12 @@ export async function buildServer(): Promise<FastifyInstance> {
 
       // 如果消息已通过 WebSocket 保存，从数据库查找
       if (!message && response.id) {
-        logger.info({ externalId: response.id }, 'Message already exists, fetching from database');
-        message = await prisma.message.findUnique({
-          where: { externalId: response.id },
+        logger.info({ accountId, externalId: response.id }, 'Message already exists, fetching from database');
+        message = await prisma.message.findFirst({
+          where: { 
+            accountId,
+            externalId: response.id 
+          },
         });
       }
 
@@ -614,6 +673,35 @@ export async function buildServer(): Promise<FastifyInstance> {
       }
 
       logger.info({ messageId: message.id }, 'Message recorded to database');
+
+      // 🔥 触发 WebSocket 事件，通知前端新消息
+      const chatId = body.phoneE164.replace('+', '') + '@c.us';
+      webSocketService.broadcast({
+        type: 'new_message',
+        data: {
+          id: message.externalId || message.id,
+          from: chatId,
+          to: chatId,
+          body: body.content,
+          fromMe: true,
+          type: 'chat',
+          timestamp: Math.floor(message.createdAt.getTime() / 1000),
+          threadId: thread.id,
+          messageId: message.id,
+          hasMedia: false,
+          // 🎨 媒体字段 - 从数据库消息对象中获取
+          mediaUrl: message.mediaUrl || null,
+          mediaType: message.mediaType || null,
+          mediaMimeType: message.mediaMimeType || null,
+          mediaSize: message.mediaSize || null,
+          mediaFileName: message.mediaFileName || null,
+          originalFileName: message.originalFileName || null,
+          thumbnailUrl: message.thumbnailUrl || null,
+          duration: message.duration || null,
+        },
+        timestamp: Date.now(),
+      });
+      logger.info({ messageId: message.id, hasMedia: !!message.mediaUrl }, 'WebSocket event broadcast');
 
       return sendOk(reply, 200, {
         message: {
@@ -646,11 +734,12 @@ export async function buildServer(): Promise<FastifyInstance> {
 
   // 获取或创建联系人的对话线程
   app.post('/contacts/:id/thread', async (request, reply) => {
+    const accountId = request.accountId!;
     const params = contactIdSchema.parse(request.params);
     
     try {
       // 获取或创建线程
-      const thread = await getOrCreateThread(params.id);
+      const thread = await getOrCreateThread(accountId, params.id);
       const threadSummary = await getThreadSummary(thread.id);
       
       return sendOk(reply, 200, { 
@@ -696,29 +785,37 @@ export async function buildServer(): Promise<FastifyInstance> {
   });
 
   // 退出登录 - 使用GET请求避免Content-Type问题
-  app.get('/auth/logout', async (_request, reply) => {
+  app.get('/auth/logout', async (request, reply) => {
     try {
-      logger.info('Received logout request (GET)');
+      const accountId = request.accountId!;
+      logger.info({ accountId }, 'Received logout request (GET)');
+      
+      const whatsappService = accountManager.getAccountService(accountId);
+      if (!whatsappService) {
+        return sendError(reply, 404, { code: 'ACCOUNT_NOT_FOUND', message: 'Account not found or not started' });
+      }
       
       // 获取退出前的状态
       const statusBefore = whatsappService.getStatus();
-      logger.info({ statusBefore }, 'Status before logout');
+      logger.info({ accountId, statusBefore }, 'Status before logout');
       
       // 执行简化的退出（不等待异步操作）
       whatsappService.logout();
       
       // 获取退出后的状态
       const statusAfter = whatsappService.getStatus();
-      logger.info({ statusAfter }, 'Status after logout');
+      logger.info({ accountId, statusAfter }, 'Status after logout');
       
-      logger.info('WhatsApp logout completed successfully');
+      logger.info({ accountId }, 'WhatsApp logout completed successfully');
       return sendOk(reply, 200, { 
         message: 'Logged out successfully',
         statusBefore,
         statusAfter
       });
     } catch (error) {
+      const accountId = request.accountId!;
       logger.error({ 
+        accountId,
         error: error instanceof Error ? {
           name: error.name,
           message: error.message,
@@ -727,7 +824,8 @@ export async function buildServer(): Promise<FastifyInstance> {
       }, 'Failed to logout');
       
       // 即使出错，也尝试返回当前状态
-      const currentStatus = whatsappService.getStatus();
+      const whatsappService = accountManager.getAccountService(accountId);
+      const currentStatus = whatsappService?.getStatus();
       return sendError(reply, 500, { 
         code: 'LOGOUT_FAILED', 
         message: `Failed to logout: ${error instanceof Error ? error.message : String(error)}`,
@@ -737,29 +835,37 @@ export async function buildServer(): Promise<FastifyInstance> {
   });
 
   // 保留POST方法作为备用
-  app.post('/auth/logout', async (_request, reply) => {
+  app.post('/auth/logout', async (request, reply) => {
     try {
-      logger.info('Received logout request (POST)');
+      const accountId = request.accountId!;
+      logger.info({ accountId }, 'Received logout request (POST)');
+      
+      const whatsappService = accountManager.getAccountService(accountId);
+      if (!whatsappService) {
+        return sendError(reply, 404, { code: 'ACCOUNT_NOT_FOUND', message: 'Account not found or not started' });
+      }
       
       // 获取退出前的状态
       const statusBefore = whatsappService.getStatus();
-      logger.info({ statusBefore }, 'Status before logout');
+      logger.info({ accountId, statusBefore }, 'Status before logout');
       
       // 执行简化的退出（不等待异步操作）
       whatsappService.logout();
       
       // 获取退出后的状态
       const statusAfter = whatsappService.getStatus();
-      logger.info({ statusAfter }, 'Status after logout');
+      logger.info({ accountId, statusAfter }, 'Status after logout');
       
-      logger.info('WhatsApp logout completed successfully');
+      logger.info({ accountId }, 'WhatsApp logout completed successfully');
       return sendOk(reply, 200, { 
         message: 'Logged out successfully',
         statusBefore,
         statusAfter
       });
     } catch (error) {
+      const accountId = request.accountId!;
       logger.error({ 
+        accountId,
         error: error instanceof Error ? {
           name: error.name,
           message: error.message,
@@ -768,7 +874,8 @@ export async function buildServer(): Promise<FastifyInstance> {
       }, 'Failed to logout');
       
       // 即使出错，也尝试返回当前状态
-      const currentStatus = whatsappService.getStatus();
+      const whatsappService = accountManager.getAccountService(accountId);
+      const currentStatus = whatsappService?.getStatus();
       return sendError(reply, 500, { 
         code: 'LOGOUT_FAILED', 
         message: `Failed to logout: ${error instanceof Error ? error.message : String(error)}`,
@@ -790,13 +897,8 @@ export async function buildServer(): Promise<FastifyInstance> {
     }
   });
 
-  app.get('/contacts/:id', async (request, reply) => {
-    const params = contactIdSchema.parse(request.params);
-    const contact = await getContactById(params.id);
-    const view = serializeContact(contact);
-    return sendOk(reply, 200, view);
-  });
-
+  // ❌ 已移除：GET /contacts/:id -> 现在在 contacts.ts 路由中
+  
   // 获取系统设置
   app.get('/settings', async (_request, reply) => {
     try {
@@ -823,6 +925,15 @@ export async function buildServer(): Promise<FastifyInstance> {
     }
   });
 
+
+  // 注册账号管理路由（不需要账号上下文）
+  await app.register(accountRoutes, { prefix: '/accounts' });
+
+  // 注册账号上下文中间件（所有其他路由都需要）
+  app.addHook('onRequest', accountContextMiddleware);
+
+  // 注册联系人管理路由
+  await app.register(contactRoutes, { prefix: '/contacts' });
 
   // 注册模板管理路由
   await app.register(templateRoutes);
@@ -853,12 +964,15 @@ export async function buildServer(): Promise<FastifyInstance> {
   // 注册会话管理路由
   await app.register(threadRoutes);
 
+  // 注册群组管理路由（社群营销）
+  await app.register(groupRoutes, { prefix: '/groups' });
+
   if (!isAuthEnabled) {
     logger.warn('AUTH_TOKEN is not configured. Authentication is disabled.');
   }
 
-  // Initialize WebSocket service
-  webSocketService.initialize(app);
+  // Initialize WebSocket service with AccountManager
+  webSocketService.initialize(app, accountManager);
 
   return app;
 }

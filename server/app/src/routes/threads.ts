@@ -11,7 +11,8 @@ export async function threadRoutes(fastify: FastifyInstance) {
       const thread = await threadService.pinThread(id, pinned);
 
       // 新增：触发 WebSocket 事件
-      const whatsappService = fastify.whatsappService;
+      const accountId = request.accountId!;
+      const whatsappService = fastify.accountManager.getAccountService(accountId);
       if (whatsappService) {
         whatsappService.emitThreadPinned(id, pinned);
       }
@@ -39,7 +40,8 @@ export async function threadRoutes(fastify: FastifyInstance) {
       const thread = await threadService.archiveThread(id, archived);
 
       // 新增：触发 WebSocket 事件
-      const whatsappService = fastify.whatsappService;
+      const accountId = request.accountId!;
+      const whatsappService = fastify.accountManager.getAccountService(accountId);
       if (whatsappService) {
         whatsappService.emitThreadArchived(id, archived);
       }
@@ -155,6 +157,7 @@ export async function threadRoutes(fastify: FastifyInstance) {
   // 按筛选条件获取会话列表
   fastify.get('/threads/filtered', async (request, reply) => {
     try {
+      const accountId = request.accountId!;
       const { isPinned, isArchived, labels, hasUnread } = request.query as any;
 
       const filter: threadService.ThreadFilter = {};
@@ -175,7 +178,7 @@ export async function threadRoutes(fastify: FastifyInstance) {
         filter.hasUnread = hasUnread === 'true';
       }
 
-      const threads = await threadService.listThreadsFiltered(filter);
+      const threads = await threadService.listThreadsFiltered(accountId, filter);
 
       return reply.send({
         ok: true,

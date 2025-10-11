@@ -1,17 +1,8 @@
+'use client';
+
 import React from 'react';
 import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-
-export const WhatsAppColors = {
-  accent: '#00a884',
-  success: '#00a884',
-  danger: '#e74c3c',
-  warning: '#f39c12',
-  info: '#3498db',
-  panelBackground: '#ffffff',
-  border: '#e9edef',
-  textPrimary: '#111b21',
-  textSecondary: '#667781',
-};
+import { useTheme } from '@/lib/theme-context';
 
 interface BarChartProps {
   data: Array<{
@@ -35,13 +26,15 @@ export default function BarChart({
   height = 300,
   layout = 'vertical',
 }: BarChartProps) {
+  const { colors } = useTheme();
+
   return (
     <div style={{ width: '100%' }}>
       {title && (
         <div style={{
           fontSize: '16px',
           fontWeight: '600',
-          color: WhatsAppColors.textPrimary,
+          color: colors.textPrimary,
           marginBottom: '16px',
         }}>
           {title}
@@ -53,30 +46,31 @@ export default function BarChart({
           layout={layout}
           margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
         >
-          <CartesianGrid strokeDasharray="3 3" stroke={WhatsAppColors.border} />
+          <CartesianGrid strokeDasharray="3 3" stroke={colors.border} />
           {layout === 'vertical' ? (
             <>
-              <XAxis type="number" stroke={WhatsAppColors.textSecondary} style={{ fontSize: '12px' }} />
-              <YAxis type="category" dataKey="name" stroke={WhatsAppColors.textSecondary} style={{ fontSize: '12px' }} />
+              <XAxis type="number" stroke={colors.textSecondary} style={{ fontSize: '12px' }} />
+              <YAxis type="category" dataKey="name" stroke={colors.textSecondary} style={{ fontSize: '12px' }} />
             </>
           ) : (
             <>
-              <XAxis type="category" dataKey="name" stroke={WhatsAppColors.textSecondary} style={{ fontSize: '12px' }} />
-              <YAxis type="number" stroke={WhatsAppColors.textSecondary} style={{ fontSize: '12px' }} />
+              <XAxis type="category" dataKey="name" stroke={colors.textSecondary} style={{ fontSize: '12px' }} />
+              <YAxis type="number" stroke={colors.textSecondary} style={{ fontSize: '12px' }} />
             </>
           )}
           <Tooltip
             contentStyle={{
-              backgroundColor: WhatsAppColors.panelBackground,
-              border: `1px solid ${WhatsAppColors.border}`,
+              backgroundColor: colors.panelBackground,
+              border: `1px solid ${colors.border}`,
               borderRadius: '8px',
               fontSize: '13px',
+              color: colors.textPrimary,
             }}
           />
           <Legend
             wrapperStyle={{
               fontSize: '13px',
-              color: WhatsAppColors.textSecondary,
+              color: colors.textSecondary,
             }}
           />
           {bars.map((bar) => (
@@ -86,6 +80,7 @@ export default function BarChart({
               name={bar.name}
               fill={bar.color}
               radius={[4, 4, 0, 0]}
+              animationDuration={800}
             />
           ))}
         </RechartsBarChart>

@@ -152,8 +152,9 @@ export async function knowledgeRoutes(fastify: FastifyInstance) {
   // 创建知识库条目
   fastify.post('/knowledge', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
+      const accountId = request.accountId!;
       const data = knowledgeCreateSchema.parse(request.body);
-      const knowledge = await KnowledgeService.createKnowledge(data);
+      const knowledge = await KnowledgeService.createKnowledge(accountId, data);
       
       logger.info('Knowledge item created', { knowledgeId: knowledge.id, title: knowledge.title } as any);
       

@@ -25,11 +25,12 @@ export type SendOutboundMessageFn = (params: {
 }) => Promise<{ externalId?: string | null }>;
 
 export async function sendOutreach(
+  accountId: string,
   request: OutreachRequest,
   sendMessage: SendOutboundMessageFn,
 ): Promise<OutreachSendResult> {
   const now = new Date();
-  const contact = await getContactById(request.contactId);
+  const contact = await getContactById(accountId, request.contactId);
 
   // 禁用冷却期检查 - 允许立即发送消息
   // if (isCooldownActive(contact, now)) {
@@ -38,7 +39,7 @@ export async function sendOutreach(
 
   ensureNoForbiddenKeyword(request.content);
 
-  const thread = await getOrCreateThread(contact.id);
+  const thread = await getOrCreateThread(accountId, contact.id);
   // 保持AI启用状态，准备接收回复后自动响应
   await setAiEnabled(thread.id, true);
 
@@ -63,6 +64,7 @@ export async function sendOutreach(
     }, 'Outreach message sent successfully');
 
     const message = await recordMessageIfMissing({
+      accountId,
       threadId: thread.id,
       direction: MessageDirection.OUT,
       text: request.content,
@@ -127,6 +129,7 @@ export async function sendOutreach(
 
     // 即使WhatsApp发送失败，也记录消息到数据库，标记为FAILED状态
     const message = await recordMessage({
+      accountId,
       threadId: thread.id,
       direction: MessageDirection.OUT,
       text: request.content,

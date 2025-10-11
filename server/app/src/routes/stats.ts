@@ -19,6 +19,8 @@ export async function statsRoutes(fastify: FastifyInstance) {
         batchOperationsCount,
         knowledgeCount,
         campaignsCount,
+        groupsCount,
+        groupMessagesCount,
       ] = await Promise.all([
         prisma.contact.count(),
         prisma.message.count(),
@@ -27,6 +29,8 @@ export async function statsRoutes(fastify: FastifyInstance) {
         prisma.batchOperation.count(),
         prisma.knowledgeBase.count(),
         prisma.campaign.count(),
+        prisma.whatsAppGroup.count(),
+        prisma.groupMessage.count(),
       ]);
       
       // 获取今日消息数
@@ -62,6 +66,23 @@ export async function statsRoutes(fastify: FastifyInstance) {
         },
       });
       
+      // 获取监控中的群组数
+      const monitoringGroups = await prisma.whatsAppGroup.count({
+        where: {
+          isMonitoring: true,
+        },
+      });
+      
+      // 获取活跃群组数（最近7天有消息的）
+      const activeGroups = await prisma.whatsAppGroup.count({
+        where: {
+          isActive: true,
+          updatedAt: {
+            gte: weekAgo,
+          },
+        },
+      });
+      
       const stats = {
         contacts: {
           total: contactsCount,
@@ -86,6 +107,12 @@ export async function statsRoutes(fastify: FastifyInstance) {
         },
         campaigns: {
           total: campaignsCount,
+        },
+        groups: {
+          total: groupsCount,
+          monitoring: monitoringGroups,
+          active: activeGroups,
+          messages: groupMessagesCount,
         },
       };
       
@@ -280,6 +307,180 @@ export async function statsRoutes(fastify: FastifyInstance) {
         ok: false,
         code: 'STATS_ERROR',
         message: error instanceof Error ? error.message : '获取活动统计失败',
+      });
+    }
+  });
+
+  // TOP榜单 - 最活跃群组
+  fastify.get('/stats/top-groups', async (request: FastifyRequest<{
+    Querystring: { startDate?: string; endDate?: string }
+  }>, reply: FastifyReply) => {
+    try {
+      const { StatsService } = await import('../services/stats-service');
+      const { startDate, endDate } = request.query;
+      
+      const options: any = {};
+      if (startDate) options.startDate = new Date(startDate);
+      if (endDate) options.endDate = new Date(endDate);
+
+      const topGroups = await StatsService.getTopGroups(options);
+      
+      return reply.send({
+        ok: true,
+        data: topGroups,
+      });
+    } catch (error) {
+      logger.error('Failed to get top groups', { error } as any);
+      
+      return reply.code(500).send({
+        ok: false,
+        code: 'STATS_ERROR',
+        message: error instanceof Error ? error.message : '获取TOP群组失败',
+      });
+    }
+  });
+
+  // TOP榜单 - 最多消息联系人
+  fastify.get('/stats/top-contacts', async (request: FastifyRequest<{
+    Querystring: { startDate?: string; endDate?: string }
+  }>, reply: FastifyReply) => {
+    try {
+      const { StatsService } = await import('../services/stats-service');
+      const { startDate, endDate } = request.query;
+      
+      const options: any = {};
+      if (startDate) options.startDate = new Date(startDate);
+      if (endDate) options.endDate = new Date(endDate);
+
+      const topContacts = await StatsService.getTopContacts(options);
+      
+      return reply.send({
+        ok: true,
+        data: topContacts,
+      });
+    } catch (error) {
+      logger.error('Failed to get top contacts', { error } as any);
+      
+      return reply.code(500).send({
+        ok: false,
+        code: 'STATS_ERROR',
+        message: error instanceof Error ? error.message : '获取TOP联系人失败',
+      });
+    }
+  });
+
+  // TOP榜单 - 最常用模板
+  fastify.get('/stats/top-templates', async (request: FastifyRequest<{
+    Querystring: { startDate?: string; endDate?: string }
+  }>, reply: FastifyReply) => {
+    try {
+      const { StatsService } = await import('../services/stats-service');
+      const { startDate, endDate } = request.query;
+      
+      const options: any = {};
+      if (startDate) options.startDate = new Date(startDate);
+      if (endDate) options.endDate = new Date(endDate);
+
+      const topTemplates = await StatsService.getTopTemplates(options);
+      
+      return reply.send({
+        ok: true,
+        data: topTemplates,
+      });
+    } catch (error) {
+      logger.error('Failed to get top templates', { error } as any);
+      
+      return reply.code(500).send({
+        ok: false,
+        code: 'STATS_ERROR',
+        message: error instanceof Error ? error.message : '获取TOP模板失败',
+      });
+    }
+  });
+
+  // TOP榜单 - 响应时间最快
+  fastify.get('/stats/top-response-times', async (request: FastifyRequest<{
+    Querystring: { startDate?: string; endDate?: string }
+  }>, reply: FastifyReply) => {
+    try {
+      const { StatsService } = await import('../services/stats-service');
+      const { startDate, endDate } = request.query;
+      
+      const options: any = {};
+      if (startDate) options.startDate = new Date(startDate);
+      if (endDate) options.endDate = new Date(endDate);
+
+      const topResponseTimes = await StatsService.getTopResponseTimes(options);
+      
+      return reply.send({
+        ok: true,
+        data: topResponseTimes,
+      });
+    } catch (error) {
+      logger.error('Failed to get top response times', { error } as any);
+      
+      return reply.code(500).send({
+        ok: false,
+        code: 'STATS_ERROR',
+        message: error instanceof Error ? error.message : '获取TOP响应时间失败',
+      });
+    }
+  });
+
+  // TOP榜单 - 批量操作成功率
+  fastify.get('/stats/top-batch-success', async (request: FastifyRequest<{
+    Querystring: { startDate?: string; endDate?: string }
+  }>, reply: FastifyReply) => {
+    try {
+      const { StatsService } = await import('../services/stats-service');
+      const { startDate, endDate } = request.query;
+      
+      const options: any = {};
+      if (startDate) options.startDate = new Date(startDate);
+      if (endDate) options.endDate = new Date(endDate);
+
+      const topBatchSuccess = await StatsService.getTopBatchSuccess(options);
+      
+      return reply.send({
+        ok: true,
+        data: topBatchSuccess,
+      });
+    } catch (error) {
+      logger.error('Failed to get top batch success', { error } as any);
+      
+      return reply.code(500).send({
+        ok: false,
+        code: 'STATS_ERROR',
+        message: error instanceof Error ? error.message : '获取TOP批量操作失败',
+      });
+    }
+  });
+
+  // 热力图数据
+  fastify.get('/stats/heatmap', async (request: FastifyRequest<{
+    Querystring: { startDate?: string; endDate?: string }
+  }>, reply: FastifyReply) => {
+    try {
+      const { StatsService } = await import('../services/stats-service');
+      const { startDate, endDate } = request.query;
+      
+      const options: any = {};
+      if (startDate) options.startDate = new Date(startDate);
+      if (endDate) options.endDate = new Date(endDate);
+
+      const heatMapData = await StatsService.getHeatMapData(options);
+      
+      return reply.send({
+        ok: true,
+        data: heatMapData,
+      });
+    } catch (error) {
+      logger.error('Failed to get heat map data', { error } as any);
+      
+      return reply.code(500).send({
+        ok: false,
+        code: 'STATS_ERROR',
+        message: error instanceof Error ? error.message : '获取热力图数据失败',
       });
     }
   });

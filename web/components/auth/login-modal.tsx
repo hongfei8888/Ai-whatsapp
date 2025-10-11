@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { X, RefreshCw, Smartphone, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { api } from '@/lib/api';
+import { useAccount } from '@/lib/account-context';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -13,6 +14,7 @@ interface LoginModalProps {
 type LoginState = 'UNINITIALIZED' | 'NEED_QR' | 'CONNECTING' | 'ONLINE' | 'OFFLINE';
 
 export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps) {
+  const { currentAccountId } = useAccount();
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [loginState, setLoginState] = useState<LoginState>('UNINITIALIZED');
   const [status, setStatus] = useState<string>('');
@@ -49,8 +51,10 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps)
       // 如果状态是 ONLINE，登录成功
       if (response.state === 'ONLINE') {
         // 获取完整状态信息，包括手机号
-        const fullStatus = await api.getStatus();
-        setPhoneNumber(fullStatus.phoneE164 || null);
+        if (currentAccountId) {
+          const fullStatus = await api.accounts.getStatus(currentAccountId);
+          setPhoneNumber(fullStatus.phoneE164 || null);
+        }
         
         setTimeout(() => {
           onLoginSuccess?.();
@@ -85,9 +89,9 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps)
   };
 
   useEffect(() => {
-    if (isOpen && loginState === 'UNINITIALIZED') {
+    if (isOpen && loginState === 'UNINITIALIZED' && currentAccountId) {
       // Modal打开时检查当前状态
-      api.getStatus().then((status) => {
+      api.accounts.getStatus(currentAccountId).then((status) => {
         if (status.state === 'ONLINE') {
           setLoginState('ONLINE');
           setPhoneNumber(status.phoneE164 || null);
@@ -109,8 +113,7 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps)
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* 背景遮罩 */}
       <div 
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={handleClose}
+        className="absolute inset-0 bg-black/80 backdrop-blur-md"
       />
       
       {/* Modal内容 */}

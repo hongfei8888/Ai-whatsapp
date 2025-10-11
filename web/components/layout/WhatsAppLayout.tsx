@@ -3,7 +3,7 @@
 import { ReactNode } from 'react';
 
 // WhatsApp Web 风格的主布局组件
-// 三栏设计：左侧功能导航 + 中间列表 + 右侧内容
+// 三栏设计：功能导航 + 中间列表 + 右侧内容
 
 interface WhatsAppLayoutProps {
   // 左侧功能导航栏
@@ -75,6 +75,7 @@ const styles = {
     display: 'flex',
     flexDirection: 'column' as const,
     flexShrink: 0,
+    overflowY: 'auto' as const,
   },
   mainContent: {
     flex: 1,

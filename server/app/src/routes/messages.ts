@@ -4,12 +4,12 @@ import { MessageDirection, MessageStatus } from '@prisma/client';
 import * as mediaService from '../services/media-service';
 import * as contactService from '../services/contact-service';
 import * as threadService from '../services/thread-service';
-import { MessageMedia } from 'whatsapp-web.js';
 
 export async function messageRoutes(fastify: FastifyInstance) {
   // 引用回复消息
   fastify.post('/messages/reply', async (request, reply) => {
     try {
+      const accountId = request.accountId!;
       const {
         threadId,
         replyToId,
@@ -27,6 +27,7 @@ export async function messageRoutes(fastify: FastifyInstance) {
       }
 
       const message = await messageService.replyToMessage({
+        accountId,
         threadId,
         replyToId,
         text,
@@ -65,7 +66,8 @@ export async function messageRoutes(fastify: FastifyInstance) {
       const message = await messageService.editMessage(id, text);
 
       // 新增：触发 WebSocket 事件
-      const whatsappService = fastify.whatsappService;
+      const accountId = request.accountId!;
+      const whatsappService = fastify.accountManager.getAccountService(accountId);
       if (whatsappService && message) {
         whatsappService.emitMessageEdited(id, message.threadId, text);
       }
@@ -93,7 +95,8 @@ export async function messageRoutes(fastify: FastifyInstance) {
       const message = await messageService.deleteMessage(id, deletedBy);
 
       // 新增：触发 WebSocket 事件
-      const whatsappService = fastify.whatsappService;
+      const accountId = request.accountId!;
+      const whatsappService = fastify.accountManager.getAccountService(accountId);
       if (whatsappService && message) {
         whatsappService.emitMessageDeleted(id, message.threadId, deletedBy);
       }
@@ -115,6 +118,7 @@ export async function messageRoutes(fastify: FastifyInstance) {
   // 转发消息
   fastify.post('/messages/:id/forward', async (request, reply) => {
     try {
+      const accountId = request.accountId!;
       const { id } = request.params as { id: string };
       const { targetThreadIds, direction = 'OUT' } = request.body as any;
 
@@ -127,6 +131,7 @@ export async function messageRoutes(fastify: FastifyInstance) {
       }
 
       const messages = await messageService.forwardMessage({
+        accountId,
         messageId: id,
         targetThreadIds,
         direction: direction as MessageDirection,
@@ -158,7 +163,8 @@ export async function messageRoutes(fastify: FastifyInstance) {
       const message = await messageService.starMessage(id, starred);
 
       // 新增：触发 WebSocket 事件
-      const whatsappService = fastify.whatsappService;
+      const accountId = request.accountId!;
+      const whatsappService = fastify.accountManager.getAccountService(accountId);
       if (whatsappService && message) {
         whatsappService.emitMessageStarred(id, message.threadId, starred);
       }
@@ -267,6 +273,7 @@ export async function messageRoutes(fastify: FastifyInstance) {
   // 发送媒体消息
   fastify.post('/messages/send-media', async (request, reply) => {
     try {
+      const accountId = request.accountId!;
       const { phoneE164, mediaFileName, mediaType, caption, originalFileName } = request.body as any;
 
       if (!phoneE164 || !mediaFileName) {
@@ -277,12 +284,12 @@ export async function messageRoutes(fastify: FastifyInstance) {
         });
       }
 
-      const whatsappService = fastify.whatsappService;
+      const whatsappService = fastify.accountManager.getAccountService(accountId);
       if (!whatsappService) {
         return reply.code(500).send({
           ok: false,
           code: 'SERVICE_NOT_AVAILABLE',
-          message: 'WhatsApp 服务不可用',
+          message: 'WhatsApp 服务不可用或账号未登录',
         });
       }
 
@@ -318,70 +325,55 @@ export async function messageRoutes(fastify: FastifyInstance) {
       }
 
       // 查找或创建联系人
-      let contact = await contactService.getContactByPhone(phoneE164);
+      let contact = await contactService.getContactByPhone(accountId, phoneE164);
       if (!contact) {
-        contact = await contactService.createContact({ phoneE164 });
+        contact = await contactService.createContact(accountId, { phoneE164 });
       }
 
       // 获取或创建对话线程
-      const thread = await threadService.getOrCreateThread(contact.id);
+      const thread = await threadService.getOrCreateThread(accountId, contact.id);
 
-      console.log(`📤 [发送媒体] 开始读取文件: ${fileSizeMB.toFixed(2)} MB`);
+      console.log(`📤 [发送媒体] 开始发送文件: ${fileSizeMB.toFixed(2)} MB`);
 
-      // 发送媒体消息（使用 MessageMedia）
-      const media = MessageMedia.fromFilePath(filePath);
-      
-      console.log(`✅ [发送媒体] 文件读取完成，准备发送`);
-      
-      // ✅ 设置原始文件名，这样客户收到的文件就是原始文件名
-      if (originalFileName) {
-        media.filename = originalFileName;
-        console.log('📤 [发送媒体] 设置文件名:', {
-          服务器文件名: mediaFileName,
-          原始文件名: originalFileName,
-          MessageMedia文件名: media.filename,
-        });
-      }
-      
-      const chatId = (whatsappService as any).toChatId(phoneE164);
-      const client = (whatsappService as any).client;
-      
-      if (!client) {
-        throw new Error('WhatsApp client 不可用');
-      }
-
+      // 使用 Venom Bot 发送媒体消息
       console.log('📤 [发送媒体] 准备发送到 WhatsApp:', {
-        chatId,
-        mediaType: media.mimetype,
-        filename: media.filename,
+        phoneE164,
+        filePath,
+        originalFileName,
         hasCaption: !!caption,
       });
 
-      const response = await client.sendMessage(chatId, media, { caption: caption || '' });
+      const response = await whatsappService.sendMediaMessage(
+        phoneE164,
+        filePath,
+        caption || ''
+      );
       
       console.log('📤 [发送媒体] WhatsApp 发送成功:', {
-        messageId: response.id?._serialized,
-        filename: media.filename,
+        messageId: response.id,
+        filename: originalFileName || mediaFileName,
       });
 
       // 记录消息到数据库
       const message = await messageService.recordMessage({
+        accountId,
         threadId: thread.id,
         direction: MessageDirection.OUT,
         text: caption || '',
-        externalId: response.id?._serialized || null,
+        externalId: response.id || null,
         status: MessageStatus.SENT,
         mediaUrl: `/media/files/${mediaFileName}`,
         mediaType: mediaType || 'image',
-        mediaMimeType: media.mimetype,
+        mediaMimeType: 'application/octet-stream', // 默认值
         mediaSize: fileInfo.size,
         mediaFileName,
       });
 
       // ✅ 触发 WebSocket 事件，通知前端新消息
+      const chatId = phoneE164.replace(/[^0-9]/g, '') + '@c.us';
       const wsEvent = {
-        id: response.id?._serialized || message.id,
-        from: chatId.includes('@c.us') ? chatId : `${phoneE164.replace('+', '')}@c.us`,
+        id: response.id || message.id,
+        from: chatId,
         to: chatId,
         body: caption || `[${originalFileName || mediaFileName}]`,
         fromMe: true,
@@ -392,7 +384,7 @@ export async function messageRoutes(fastify: FastifyInstance) {
         // 完整的媒体信息
         mediaUrl: `/media/files/${mediaFileName}`,
         mediaType: mediaType || 'image',
-        mediaMimeType: media.mimetype,
+        mediaMimeType: 'application/octet-stream', // 默认值
         mediaSize: fileInfo.size,
         mediaFileName: mediaFileName, // 服务器文件名
         originalFileName: originalFileName || mediaFileName, // 原始文件名（用于显示）

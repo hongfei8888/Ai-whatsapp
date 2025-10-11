@@ -25,7 +25,7 @@ export default function MessageSearch({ threadId, onMessageClick, onClose }: Mes
   const [loading, setLoading] = useState(false);
   const [totalResults, setTotalResults] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
-  const searchTimeoutRef = useRef<NodeJS.Timeout>();
+  const searchTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   useEffect(() => {
     inputRef.current?.focus();

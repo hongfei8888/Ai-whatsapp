@@ -2,6 +2,7 @@ import { Message, MessageDirection, MessageStatus, Prisma } from '@prisma/client
 import { prisma } from '../prisma';
 
 export interface RecordMessageInput {
+  accountId: string;
   threadId: string;
   externalId?: string | null;
   direction: MessageDirection;
@@ -19,12 +20,13 @@ export interface RecordMessageInput {
 }
 
 export async function recordMessage(input: RecordMessageInput): Promise<Message> {
-  const data: Prisma.MessageCreateInput = {
+  const data: Prisma.MessageUncheckedCreateInput = {
+    accountId: input.accountId,
+    threadId: input.threadId,
     direction: input.direction,
     status: input.status ?? MessageStatus.SENT,
     text: input.text ?? null,
     externalId: input.externalId ?? null,
-    thread: { connect: { id: input.threadId } },
     // 媒体文件字段
     mediaUrl: input.mediaUrl ?? null,
     mediaType: input.mediaType ?? null,
@@ -50,9 +52,9 @@ export async function recordMessageIfMissing(input: RecordMessageInput): Promise
   }
 }
 
-export async function listMessages(threadId: string, take = 100): Promise<Message[]> {
+export async function listMessages(accountId: string, threadId: string, take = 100): Promise<Message[]> {
   return prisma.message.findMany({
-    where: { threadId },
+    where: { accountId, threadId },
     orderBy: { createdAt: 'asc' },
     take,
   });
@@ -60,6 +62,7 @@ export async function listMessages(threadId: string, take = 100): Promise<Messag
 
 // 引用回复消息
 export interface ReplyToMessageInput {
+  accountId: string;
   threadId: string;
   replyToId: string;
   text: string;
@@ -69,20 +72,21 @@ export interface ReplyToMessageInput {
 
 export async function replyToMessage(input: ReplyToMessageInput): Promise<Message> {
   // 验证被引用的消息是否存在
-  const replyTo = await prisma.message.findUnique({
-    where: { id: input.replyToId },
+  const replyTo = await prisma.message.findFirst({
+    where: { accountId: input.accountId, id: input.replyToId },
   });
 
   if (!replyTo) {
     throw new Error('被引用的消息不存在');
   }
 
-  const data: Prisma.MessageCreateInput = {
+  const data: Prisma.MessageUncheckedCreateInput = {
+    accountId: input.accountId,
+    threadId: input.threadId,
     direction: input.direction,
     text: input.text,
     externalId: input.externalId ?? null,
-    thread: { connect: { id: input.threadId } },
-    replyTo: { connect: { id: input.replyToId } },
+    replyToId: input.replyToId,
   };
 
   return prisma.message.create({
@@ -140,14 +144,15 @@ export async function deleteMessage(messageId: string, deletedBy: string): Promi
 
 // 转发消息
 export interface ForwardMessageInput {
+  accountId: string;
   messageId: string;
   targetThreadIds: string[];
   direction: MessageDirection;
 }
 
 export async function forwardMessage(input: ForwardMessageInput): Promise<Message[]> {
-  const originalMessage = await prisma.message.findUnique({
-    where: { id: input.messageId },
+  const originalMessage = await prisma.message.findFirst({
+    where: { accountId: input.accountId, id: input.messageId },
     include: {
       thread: {
         include: {
@@ -168,7 +173,9 @@ export async function forwardMessage(input: ForwardMessageInput): Promise<Messag
   const forwardedMessages: Message[] = [];
 
   for (const targetThreadId of input.targetThreadIds) {
-    const data: Prisma.MessageCreateInput = {
+    const data: Prisma.MessageUncheckedCreateInput = {
+      accountId: input.accountId,
+      threadId: targetThreadId,
       direction: input.direction,
       text: originalMessage.text,
       mediaUrl: originalMessage.mediaUrl,
@@ -179,7 +186,6 @@ export async function forwardMessage(input: ForwardMessageInput): Promise<Messag
       thumbnailUrl: originalMessage.thumbnailUrl,
       isForwarded: true,
       forwardedFrom: originalMessage.thread.contact.name || originalMessage.thread.contact.phoneE164,
-      thread: { connect: { id: targetThreadId } },
     };
 
     const forwardedMessage = await prisma.message.create({ data });

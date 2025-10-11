@@ -7,9 +7,21 @@ export default async function mediaRoutes(fastify: FastifyInstance) {
   // 上传媒体文件
   fastify.post('/media/upload', async (request, reply) => {
     try {
+      console.log('📤 收到文件上传请求');
+      console.log('Content-Type:', request.headers['content-type']);
+      console.log('X-Account-Id:', request.headers['x-account-id']);
+      
       const data = await (request as any).file();
       
+      console.log('文件数据:', data ? '接收到文件' : '未接收到文件');
+      if (data) {
+        console.log('文件名:', data.filename);
+        console.log('MIME类型:', data.mimetype);
+        console.log('字段名:', data.fieldname);
+      }
+      
       if (!data) {
+        console.error('❌ 没有上传文件');
         return reply.code(400).send({
           ok: false,
           code: 'NO_FILE',
@@ -18,13 +30,16 @@ export default async function mediaRoutes(fastify: FastifyInstance) {
       }
 
       const result = await mediaService.handleFileUpload(data);
+      
+      console.log('✅ 文件上传成功:', result.mediaFileName);
 
       return reply.send({
         ok: true,
         data: result,
       });
     } catch (error: any) {
-      console.error('文件上传失败:', error);
+      console.error('❌ 文件上传失败:', error);
+      console.error('错误堆栈:', error.stack);
       return reply.code(500).send({
         ok: false,
         code: 'UPLOAD_FAILED',

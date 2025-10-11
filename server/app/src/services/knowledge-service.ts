@@ -70,7 +70,7 @@ export const categoryCreateSchema = z.object({
 // 知识库服务类
 export class KnowledgeService {
   // 创建知识库条目
-  static async createKnowledge(data: KnowledgeCreatePayload): Promise<KnowledgeItem> {
+  static async createKnowledge(accountId: string, data: KnowledgeCreatePayload): Promise<KnowledgeItem> {
     const validatedData = knowledgeCreateSchema.parse(data);
     
     // 处理标签和关键词
@@ -85,6 +85,7 @@ export class KnowledgeService {
     
     const knowledge = await prisma.knowledgeBase.create({
       data: {
+        accountId,
         title: validatedData.title,
         content: validatedData.content,
         category: validatedData.category || 'general',

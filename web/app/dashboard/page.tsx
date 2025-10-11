@@ -5,12 +5,26 @@ import { useRouter } from 'next/navigation';
 import WhatsAppLayout, { WhatsAppColors } from '@/components/layout/WhatsAppLayout';
 import Sidebar from '@/components/layout/Sidebar';
 import StatCard from '@/components/StatCard';
-import LineChart from '@/components/charts/LineChart';
-import PieChart from '@/components/charts/PieChart';
-import BarChart from '@/components/charts/BarChart';
+// 使用动态导入避免 SSR 问题
+import { 
+  LineChart,
+  PieChart,
+  BarChart,
+  AreaChart,
+  StackedBarChart,
+  HeatMap
+} from '@/components/charts/ClientOnlyChart';
+import TopList from '@/components/TopList';
+import DateRangePicker, { DateRange } from '@/components/DateRangePicker';
+import ThemeToggle from '@/components/ThemeToggle';
+import AlertSettings from '@/components/AlertSettings';
 import { api } from '@/lib/api';
 import QRCodeDialog from '@/components/QRCodeDialog';
 import { useWebSocket } from '@/lib/useWebSocket';
+import { useTheme } from '@/lib/theme-context';
+import { AccountGuard } from '@/components/AccountGuard';
+import { useAccount } from '@/lib/account-context';
+import { useAccountSwitchRefresh } from '@/hooks/useAccountSwitch';
 
 const styles = {
   // 左侧面板样式
@@ -266,15 +280,65 @@ const styles = {
     cursor: 'pointer',
     transition: 'transform 0.2s, box-shadow 0.2s',
   },
+  errorContainer: {
+    backgroundColor: 'rgba(231, 76, 60, 0.1)',
+    border: '1px solid rgba(231, 76, 60, 0.3)',
+    borderRadius: '12px',
+    padding: '20px',
+    margin: '20px',
+    textAlign: 'center' as const,
+  },
+  errorIcon: {
+    fontSize: '48px',
+    marginBottom: '12px',
+  },
+  errorTitle: {
+    fontSize: '18px',
+    fontWeight: '600' as const,
+    color: '#e74c3c',
+    marginBottom: '8px',
+  },
+  errorMessage: {
+    fontSize: '14px',
+    color: WhatsAppColors.textSecondary,
+    marginBottom: '16px',
+  },
+  retryButton: {
+    padding: '10px 24px',
+    backgroundColor: WhatsAppColors.accent,
+    color: '#fff',
+    border: 'none',
+    borderRadius: '8px',
+    fontSize: '14px',
+    fontWeight: '600' as const,
+    cursor: 'pointer',
+    transition: 'background-color 0.2s',
+  },
+  skeletonCard: {
+    backgroundColor: WhatsAppColors.panelBackground,
+    borderRadius: '12px',
+    padding: '20px',
+    border: `1px solid ${WhatsAppColors.border}`,
+    animation: 'pulse 1.5s ease-in-out infinite',
+  },
+  skeletonBar: {
+    height: '12px',
+    backgroundColor: WhatsAppColors.border,
+    borderRadius: '6px',
+    marginBottom: '8px',
+    animation: 'pulse 1.5s ease-in-out infinite',
+  },
 };
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { colors } = useTheme();
   const [status, setStatus] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showQRDialog, setShowQRDialog] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const [error, setError] = useState<string | null>(null);
   
   // 在客户端挂载后初始化时间
   useEffect(() => {
@@ -286,49 +350,176 @@ export default function DashboardPage() {
   const [messageStats, setMessageStats] = useState<any>(null);
   const [activityStats, setActivityStats] = useState<any>(null);
   const [batchStats, setBatchStats] = useState<any>(null);
+  const [groupStats, setGroupStats] = useState<any>(null);
+
+  // 新增：时间范围状态
+  const [dateRange, setDateRange] = useState<DateRange>({
+    startDate: new Date(new Date().setDate(new Date().getDate() - 6)),
+    endDate: new Date(),
+    preset: '7days',
+  });
+
+  // 新增：TOP榜单数据
+  const [topGroups, setTopGroups] = useState<any[]>([]);
+  const [topContacts, setTopContacts] = useState<any[]>([]);
+  const [topTemplates, setTopTemplates] = useState<any[]>([]);
+  const [topResponseTimes, setTopResponseTimes] = useState<any[]>([]);
+  const [topBatchSuccess, setTopBatchSuccess] = useState<any[]>([]);
+  
+  // 新增：热力图数据
+  const [heatmapData, setHeatmapData] = useState<any[]>([]);
+
+  // 新增：显示告警设置面板
+  const [showAlertSettings, setShowAlertSettings] = useState(false);
 
   // 加载所有数据
+  const { currentAccountId, currentAccount, hasAccounts } = useAccount();
+
   const loadAllData = useCallback(async (isRefresh = false) => {
+    // 🔥 如果没有账号，不尝试加载数据
+    if (!hasAccounts || !currentAccountId) {
+      console.log('没有可用账号，跳过数据加载');
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
+    // 🔥 检查当前账号是否在线（防止使用已停止的账号）
+    if (!currentAccount || currentAccount.status === 'offline' || currentAccount.status === 'DISCONNECTED' || currentAccount.status === 'FAILED') {
+      console.warn(`当前账号 ${currentAccountId} 不在线，跳过数据加载。状态: ${currentAccount?.status}`);
+      setLoading(false);
+      setRefreshing(false);
+      setError('当前账号未连接，请先启动账号或选择其他在线账号');
+      return;
+    }
+
     try {
       if (isRefresh) {
         setRefreshing(true);
       } else {
         setLoading(true);
       }
+      setError(null); // 清除之前的错误
 
-      const [statusData, overviewData, messagesData, activityData, batchData] = await Promise.all([
-        api.getStatus().catch(() => null),
-        api.stats.overview().catch(() => null),
-        api.stats.messages().catch(() => null),
-        api.stats.activity().catch(() => null),
-        api.batch.getStats().catch(() => null),
+      const [statusData, overviewData, messagesData, activityData, batchData, groupData] = await Promise.all([
+        currentAccountId ? api.accounts.getStatus(currentAccountId).catch((err) => {
+          console.error('获取状态失败:', err);
+          return null;
+        }) : Promise.resolve(null),
+        api.stats.overview().catch((err) => {
+          console.error('获取总览统计失败:', err);
+          return null;
+        }),
+        api.stats.messages().catch((err) => {
+          console.error('获取消息统计失败:', err);
+          return null;
+        }),
+        api.stats.activity().catch((err) => {
+          console.error('获取活动统计失败:', err);
+          return null;
+        }),
+        api.batch.getStats().catch((err) => {
+          console.error('获取批量操作统计失败:', err);
+          return null;
+        }),
+        api.groups.getOverviewStats().catch((err) => {
+          console.error('获取群组统计失败:', err);
+          return null;
+        }),
       ]);
       
-      if (statusData) setStatus(statusData);
-      if (overviewData) setOverviewStats(overviewData);
-      if (messagesData) setMessageStats(messagesData);
-      if (activityData) setActivityStats(activityData);
-      if (batchData) setBatchStats(batchData);
-      
-      setLastUpdate(new Date());
+      // 检查是否所有请求都失败了
+      if (!statusData && !overviewData && !messagesData && !activityData && !batchData && !groupData) {
+        setError('无法连接到后端服务，请检查网络连接或确保后端服务正常运行');
+      } else {
+        if (statusData) setStatus(statusData.data || statusData);
+        if (overviewData) setOverviewStats(overviewData);
+        if (messagesData) setMessageStats(messagesData);
+        if (activityData) setActivityStats(activityData);
+        if (batchData) setBatchStats(batchData);
+        if (groupData) setGroupStats(groupData);
+        setLastUpdate(new Date());
+      }
     } catch (error) {
       console.error('加载数据失败:', error);
+      setError(error instanceof Error ? error.message : '加载数据失败，请重试');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [hasAccounts, currentAccountId, currentAccount]);
+
+  // 新增：加载TOP榜单和热力图数据
+  const loadTopData = useCallback(async () => {
+    try {
+      const params = {
+        startDate: dateRange.startDate?.toISOString(),
+        endDate: dateRange.endDate?.toISOString(),
+      };
+
+      const [groups, contacts, templates, responseTimes, batchSuccess, heatmap] = await Promise.all([
+        api.stats.topGroups(params).catch((err) => {
+          console.warn('加载top groups失败:', err);
+          return [];
+        }),
+        api.stats.topContacts(params).catch((err) => {
+          console.warn('加载top contacts失败:', err);
+          return [];
+        }),
+        api.stats.topTemplates(params).catch((err) => {
+          console.warn('加载top templates失败:', err);
+          return [];
+        }),
+        api.stats.topResponseTimes(params).catch((err) => {
+          console.warn('加载top response times失败:', err);
+          return [];
+        }),
+        api.stats.topBatchSuccess(params).catch((err) => {
+          console.warn('加载top batch success失败:', err);
+          return [];
+        }),
+        api.stats.heatmap(params).catch((err) => {
+          console.warn('加载heatmap失败:', err);
+          return [];
+        }),
+      ]);
+
+      setTopGroups(groups);
+      setTopContacts(contacts);
+      setTopTemplates(templates);
+      setTopResponseTimes(responseTimes);
+      setTopBatchSuccess(batchSuccess);
+      setHeatmapData(heatmap);
+    } catch (error) {
+      console.error('加载TOP数据失败:', error);
+    }
+  }, [dateRange]);
+
+  // 监听账号切换事件
+  useAccountSwitchRefresh(() => {
+    if (hasAccounts && currentAccountId) {
+      loadAllData();
+      loadTopData();
+    }
+  });
 
   useEffect(() => {
-    loadAllData();
+    // 🔥 只有在有账号时才加载数据
+    if (hasAccounts && currentAccountId) {
+      loadAllData();
+      loadTopData();
+    }
     
     // 每 30 秒自动刷新
     const interval = setInterval(() => {
-      loadAllData(true);
+      if (hasAccounts && currentAccountId) {
+        loadAllData(true);
+        loadTopData();
+      }
     }, 30000);
     
     return () => clearInterval(interval);
-  }, [loadAllData]);
+  }, [loadAllData, loadTopData, hasAccounts, currentAccountId]);
 
   // WebSocket 实时更新
   useWebSocket({
@@ -344,7 +535,7 @@ export default function DashboardPage() {
 
   const handleLogin = async () => {
     try {
-      await api.startLogin();
+      await api.auth.startLogin();
       console.log('登录流程已启动');
       setShowQRDialog(true);
     } catch (error) {
@@ -476,6 +667,24 @@ export default function DashboardPage() {
         </div>
 
         <div style={styles.statCard}>
+          <div style={styles.statLabel}>群组总数</div>
+          <div style={styles.statValue}>{groupStats?.totalGroups || overviewStats?.groups?.total || 0}</div>
+          <div style={styles.statHint}>监控：{groupStats?.monitoringGroups || overviewStats?.groups?.monitoring || 0}</div>
+        </div>
+        
+        <div style={styles.statCard}>
+          <div style={styles.statLabel}>群组成员</div>
+          <div style={styles.statValue}>{groupStats?.totalMembers || 0}</div>
+          <div style={styles.statHint}>活跃：{groupStats?.activeMembers || 0}</div>
+        </div>
+        
+        <div style={styles.statCard}>
+          <div style={styles.statLabel}>群组消息</div>
+          <div style={styles.statValue}>{groupStats?.totalMessages || 0}</div>
+          <div style={styles.statHint}>今日：{groupStats?.todayMessages || 0}</div>
+        </div>
+
+        <div style={styles.statCard}>
           <div style={styles.statLabel}>批量操作</div>
           <div style={styles.statValue}>{batchStats?.total || 0}</div>
           <div style={styles.statHint}>成功率：{batchStats?.successRate || 0}%</div>
@@ -516,76 +725,123 @@ export default function DashboardPage() {
       </div>
 
       {/* 快捷操作 */}
-      <div style={styles.statusSection}>
+      <div style={{ ...styles.statusSection, paddingBottom: '24px' }}>
         <div style={styles.sectionTitle}>快捷操作</div>
         <button
-          style={styles.quickActionButton}
+          style={{
+            ...styles.quickActionButton,
+            backgroundColor: colors.background,
+            color: colors.textPrimary,
+            border: `1px solid ${colors.border}`,
+          }}
           onClick={() => router.push('/chat')}
           onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = WhatsAppColors.border;
+            e.currentTarget.style.backgroundColor = colors.border;
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = WhatsAppColors.background;
+            e.currentTarget.style.backgroundColor = colors.background;
           }}
         >
           <span>💬</span> 对话
         </button>
         <button
-          style={styles.quickActionButton}
+          style={{
+            ...styles.quickActionButton,
+            backgroundColor: colors.background,
+            color: colors.textPrimary,
+            border: `1px solid ${colors.border}`,
+          }}
           onClick={() => router.push('/contacts')}
           onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = WhatsAppColors.border;
+            e.currentTarget.style.backgroundColor = colors.border;
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = WhatsAppColors.background;
+            e.currentTarget.style.backgroundColor = colors.background;
           }}
         >
-          <span>👥</span> 联系人
+          <span>👥</span> 通讯录
         </button>
         <button
-          style={styles.quickActionButton}
+          style={{
+            ...styles.quickActionButton,
+            backgroundColor: colors.background,
+            color: colors.textPrimary,
+            border: `1px solid ${colors.border}`,
+          }}
           onClick={() => router.push('/batch')}
           onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = WhatsAppColors.border;
+            e.currentTarget.style.backgroundColor = colors.border;
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = WhatsAppColors.background;
+            e.currentTarget.style.backgroundColor = colors.background;
           }}
         >
-          <span>⚡</span> 批量操作
+          <span>⚡</span> 消息群发
         </button>
         <button
-          style={styles.quickActionButton}
+          style={{
+            ...styles.quickActionButton,
+            backgroundColor: colors.background,
+            color: colors.textPrimary,
+            border: `1px solid ${colors.border}`,
+          }}
           onClick={() => router.push('/templates')}
           onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = WhatsAppColors.border;
+            e.currentTarget.style.backgroundColor = colors.border;
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = WhatsAppColors.background;
+            e.currentTarget.style.backgroundColor = colors.background;
           }}
         >
-          <span>📄</span> 模板
+          <span>📄</span> 消息模板
         </button>
         <button
-          style={styles.quickActionButton}
+          style={{
+            ...styles.quickActionButton,
+            backgroundColor: colors.background,
+            color: colors.textPrimary,
+            border: `1px solid ${colors.border}`,
+          }}
           onClick={() => router.push('/knowledge')}
           onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = WhatsAppColors.border;
+            e.currentTarget.style.backgroundColor = colors.border;
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = WhatsAppColors.background;
+            e.currentTarget.style.backgroundColor = colors.background;
           }}
         >
           <span>💡</span> 知识库
         </button>
         <button
-          style={styles.quickActionButton}
-          onClick={() => router.push('/settings')}
+          style={{
+            ...styles.quickActionButton,
+            backgroundColor: colors.background,
+            color: colors.textPrimary,
+            border: `1px solid ${colors.border}`,
+          }}
+          onClick={() => router.push('/groups')}
           onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = WhatsAppColors.border;
+            e.currentTarget.style.backgroundColor = colors.border;
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = WhatsAppColors.background;
+            e.currentTarget.style.backgroundColor = colors.background;
+          }}
+        >
+          <span>📱</span> 社群营销
+        </button>
+        <button
+          style={{
+            ...styles.quickActionButton,
+            backgroundColor: colors.background,
+            color: colors.textPrimary,
+            border: `1px solid ${colors.border}`,
+          }}
+          onClick={() => router.push('/settings')}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = colors.border;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = colors.background;
           }}
         >
           <span>⚙️</span> 设置
@@ -601,34 +857,80 @@ export default function DashboardPage() {
         <div>
           <div style={styles.mainTitle}>WhatsApp 自动化系统</div>
           <div style={styles.mainSubtitle}>
-            智能客服 · 自动养号 · 批量营销
+            智能客服 · 自动养号 · 批量营销 · 群组管理
           </div>
           <div style={styles.lastUpdate}>
             最后更新：{formatTime(lastUpdate)}
           </div>
         </div>
-        <button
-          style={styles.refreshButton}
-          onClick={() => loadAllData(true)}
-          disabled={refreshing}
-          onMouseEnter={(e) => {
-            if (!refreshing) {
-              e.currentTarget.style.backgroundColor = WhatsAppColors.accentHover;
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (!refreshing) {
-              e.currentTarget.style.backgroundColor = WhatsAppColors.accent;
-            }
-          }}
-        >
-          <span>{refreshing ? '刷新中...' : '🔄 刷新数据'}</span>
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <DateRangePicker value={dateRange} onChange={setDateRange} />
+          <ThemeToggle />
+          <button
+            style={{
+              ...styles.refreshButton,
+              padding: '10px 16px',
+            }}
+            onClick={() => setShowAlertSettings(!showAlertSettings)}
+            title="告警设置"
+          >
+            <span>📢</span>
+          </button>
+          <button
+            style={styles.refreshButton}
+            onClick={() => {
+              loadAllData(true);
+              loadTopData();
+            }}
+            disabled={refreshing}
+            onMouseEnter={(e) => {
+              if (!refreshing) {
+                e.currentTarget.style.backgroundColor = colors.accentHover;
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!refreshing) {
+                e.currentTarget.style.backgroundColor = colors.accent;
+              }
+            }}
+          >
+            <span>{refreshing ? '刷新中...' : '🔄 刷新数据'}</span>
+          </button>
+        </div>
       </div>
 
       <div style={styles.mainBody}>
-        {loading ? (
-          <div style={styles.loadingText}>加载数据中...</div>
+        {error ? (
+          <div style={styles.errorContainer}>
+            <div style={styles.errorIcon}>⚠️</div>
+            <div style={styles.errorTitle}>加载失败</div>
+            <div style={styles.errorMessage}>{error}</div>
+            <button
+              style={styles.retryButton}
+              onClick={() => loadAllData()}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = WhatsAppColors.accentHover;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = WhatsAppColors.accent;
+              }}
+            >
+              🔄 重试
+            </button>
+          </div>
+        ) : loading ? (
+          <>
+            {/* 骨架屏加载效果 */}
+            <div style={styles.cardsGrid}>
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                <div key={i} style={styles.skeletonCard}>
+                  <div style={{...styles.skeletonBar, width: '60%', marginBottom: '12px'}}></div>
+                  <div style={{...styles.skeletonBar, width: '40%', height: '32px', marginBottom: '8px'}}></div>
+                  <div style={{...styles.skeletonBar, width: '80%', height: '10px'}}></div>
+                </div>
+              ))}
+            </div>
+          </>
         ) : (
           <>
             {/* 核心统计卡片网格 */}
@@ -709,7 +1011,7 @@ export default function DashboardPage() {
                 style={styles.clickableCard}
               >
                 <StatCard
-                  title="联系人总数"
+                  title="通讯录总数"
                   value={overviewStats?.contacts?.total || 0}
                   icon="👥"
                   color="#9b59b6"
@@ -800,6 +1102,69 @@ export default function DashboardPage() {
                   subtitle="点击查看会话"
                 />
               </div>
+              
+              <div
+                onClick={() => router.push('/groups')}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+                style={styles.clickableCard}
+              >
+                <StatCard
+                  title="群组管理"
+                  value={groupStats?.totalGroups || overviewStats?.groups?.total || 0}
+                  icon="📱"
+                  color="#e67e22"
+                  subtitle={`监控中：${groupStats?.monitoringGroups || overviewStats?.groups?.monitoring || 0}`}
+                />
+              </div>
+              
+              <div
+                onClick={() => router.push('/chat')}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+                style={styles.clickableCard}
+              >
+                <StatCard
+                  title="群组成员"
+                  value={groupStats?.totalMembers || 0}
+                  icon="👥"
+                  color="#8e44ad"
+                  subtitle={`活跃：${groupStats?.activeMembers || 0}`}
+                />
+              </div>
+              
+              <div
+                onClick={() => router.push('/chat')}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+                style={styles.clickableCard}
+              >
+                <StatCard
+                  title="群组消息"
+                  value={groupStats?.totalMessages || 0}
+                  icon="💬"
+                  color="#16a085"
+                  subtitle={`今日：${groupStats?.todayMessages || 0}`}
+                />
+              </div>
             </div>
 
             {/* 图表区域 */}
@@ -844,6 +1209,91 @@ export default function DashboardPage() {
               )}
             </div>
 
+            {/* 新增：告警设置面板 */}
+            {showAlertSettings && (
+              <div style={{ marginBottom: '30px' }}>
+                <AlertSettings />
+              </div>
+            )}
+
+            {/* 新增：热力图 */}
+            {heatmapData.length > 0 && (
+              <div style={{ ...styles.chartContainer, marginBottom: '30px' }}>
+                <HeatMap
+                  data={heatmapData}
+                  title="📊 消息活动热力图（7天×24小时）"
+                  height={300}
+                />
+              </div>
+            )}
+
+            {/* 新增：TOP榜单区域 */}
+            <div style={styles.chartsSection}>
+              <div style={{ ...styles.chartRow, gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))' }}>
+                {topGroups.length > 0 && (
+                  <TopList
+                    title="🏆 最活跃群组 TOP10"
+                    icon="🏘️"
+                    items={topGroups.map((g: any) => ({
+                      id: g.id,
+                      name: g.name,
+                      value: g.messageCount,
+                      subtitle: `${g.memberCount} 成员`,
+                      onClick: () => router.push(`/groups`),
+                    }))}
+                    valueFormatter={(v) => `${v} 条消息`}
+                  />
+                )}
+
+                {topContacts.length > 0 && (
+                  <TopList
+                    title="💬 最多消息联系人 TOP10"
+                    icon="👤"
+                    items={topContacts.map((c: any) => ({
+                      id: c.id,
+                      name: c.name || c.phoneE164,
+                      value: c.messageCount,
+                      subtitle: c.phoneE164,
+                      onClick: () => router.push(`/chat`),
+                    }))}
+                    valueFormatter={(v) => `${v} 条`}
+                  />
+                )}
+              </div>
+
+              <div style={{ ...styles.chartRow, gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', marginTop: '20px' }}>
+                {topResponseTimes.length > 0 && (
+                  <TopList
+                    title="⚡ 响应最快 TOP10"
+                    icon="🚀"
+                    items={topResponseTimes.map((r: any) => ({
+                      id: r.threadId,
+                      name: r.name || r.phoneE164,
+                      value: r.responseCount,
+                      subtitle: `平均 ${r.avgResponseTimeFormatted}`,
+                      onClick: () => router.push(`/chat`),
+                    }))}
+                    valueFormatter={(v) => `${v} 次响应`}
+                  />
+                )}
+
+                {topBatchSuccess.length > 0 && (
+                  <TopList
+                    title="✅ 批量操作成功率 TOP5"
+                    icon="⚡"
+                    items={topBatchSuccess.map((b: any) => ({
+                      id: b.id,
+                      name: b.title || `${b.type}操作`,
+                      value: b.successRate,
+                      subtitle: `${b.successCount}/${b.totalCount}`,
+                      onClick: () => router.push(`/batch`),
+                    }))}
+                    valueFormatter={(v) => `${v}%`}
+                  />
+                )}
+              </div>
+            </div>
+
             {/* 最近活动 */}
             {activities.length > 0 && (
               <div style={styles.activitySection}>
@@ -877,7 +1327,20 @@ export default function DashboardPage() {
   );
 
   return (
-    <>
+    <AccountGuard
+      title="需要账号访问仪表盘"
+      description="请先添加一个 WhatsApp 账号以查看仪表盘数据。"
+    >
+      <style jsx global>{`
+        @keyframes pulse {
+          0%, 100% {
+            opacity: 1;
+          }
+          50% {
+            opacity: 0.5;
+          }
+        }
+      `}</style>
       <WhatsAppLayout
         sidebar={<Sidebar />}
         listPanel={listPanel}
@@ -894,6 +1357,6 @@ export default function DashboardPage() {
           }, 1000);
         }}
       />
-    </>
+    </AccountGuard>
   );
 }

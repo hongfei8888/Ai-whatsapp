@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
+import { useAccount } from '@/lib/account-context';
 import type { MessageTemplate, BatchSendConfig } from '@/lib/types';
 
 const S = {
@@ -292,6 +293,7 @@ const S = {
 };
 
 export default function BatchSendPage() {
+  const { currentAccountId } = useAccount();
   const [templates, setTemplates] = useState<MessageTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
   const [customContent, setCustomContent] = useState<string>('');
@@ -337,13 +339,24 @@ export default function BatchSendPage() {
   };
 
   const loadContacts = async () => {
+    if (!currentAccountId) {
+      console.warn('未选择账号，无法加载联系人');
+      setError('请先选择一个账号');
+      return;
+    }
+    
     setContactsLoading(true);
     try {
-      const response = await api.getContacts();
-      setContacts(response.contacts || []);
+      // 🔄 使用 threads API 获取联系人（contacts API已废弃）
+      const threadsData = await api.getThreads();
+      const contactsList = (threadsData.threads || [])
+        .map((t: any) => t.contact)
+        .filter((c: any) => c && c.phoneE164);
+      setContacts(contactsList);
     } catch (error) {
       console.error('加载联系人失败:', error);
       setError('加载联系人失败，请重试');
+      setContacts([]);
     } finally {
       setContactsLoading(false);
     }

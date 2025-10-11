@@ -143,12 +143,8 @@ export function AiConfigCard({ initialConfig }: AiConfigCardProps) {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Dialog open={testOpen} onOpenChange={(open) => {
-            setTestOpen(open);
-            if (!open) {
-              setTestInput('');
-              setTestReply(null);
-            }
+          <Dialog open={testOpen} onOpenChange={() => {
+            // 🔒 禁止通过遮罩层或ESC键关闭
           }}>
             <DialogTrigger asChild>
               <Button variant="outline">试一试</Button>
@@ -172,12 +168,21 @@ export function AiConfigCard({ initialConfig }: AiConfigCardProps) {
                 )}
               </div>
               <DialogFooter className="flex items-center justify-between">
-                <Button variant="outline" onClick={() => setTestReply(null)} disabled={isTesting}>
-                  清空结果
+                <Button variant="outline" onClick={() => {
+                  setTestOpen(false);
+                  setTestInput('');
+                  setTestReply(null);
+                }}>
+                  关闭
                 </Button>
-                <Button onClick={handleTest} disabled={isTesting}>
-                  {isTesting ? '生成中…' : '生成回复'}
-                </Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setTestReply(null)} disabled={isTesting}>
+                    清空结果
+                  </Button>
+                  <Button onClick={handleTest} disabled={isTesting}>
+                    {isTesting ? '生成中…' : '生成回复'}
+                  </Button>
+                </div>
               </DialogFooter>
             </DialogContent>
           </Dialog>

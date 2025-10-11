@@ -53,7 +53,7 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'space-between',
     borderBottomWidth: '1px',
-    borderBottomStyle: 'solid',
+    borderBottomStyle: 'solid' as const,
     borderBottomColor: WhatsAppColors.border,
   },
   headerTitle: {
@@ -92,7 +92,7 @@ const styles = {
     backgroundColor: WhatsAppColors.panelBackground,
     padding: '8px 12px',
     borderBottomWidth: '1px',
-    borderBottomStyle: 'solid',
+    borderBottomStyle: 'solid' as const,
     borderBottomColor: WhatsAppColors.border,
   },
   searchInput: {
@@ -114,7 +114,7 @@ const styles = {
     padding: '12px',
     backgroundColor: WhatsAppColors.panelBackground,
     borderBottomWidth: '1px',
-    borderBottomStyle: 'solid',
+    borderBottomStyle: 'solid' as const,
     borderBottomColor: WhatsAppColors.border,
   },
   statCard: {
@@ -144,7 +144,7 @@ const styles = {
     padding: '8px 12px',
     backgroundColor: WhatsAppColors.panelBackground,
     borderBottomWidth: '1px',
-    borderBottomStyle: 'solid',
+    borderBottomStyle: 'solid' as const,
     borderBottomColor: WhatsAppColors.border,
     overflowX: 'auto' as const,
   },
@@ -181,7 +181,7 @@ const styles = {
   knowledgeItem: {
     padding: '16px',
     borderBottomWidth: '1px',
-    borderBottomStyle: 'solid',
+    borderBottomStyle: 'solid' as const,
     borderBottomColor: WhatsAppColors.border,
     cursor: 'pointer',
     transition: 'background-color 0.2s',
@@ -227,7 +227,7 @@ const styles = {
   detailHeader: {
     padding: '20px 30px',
     borderBottomWidth: '1px',
-    borderBottomStyle: 'solid',
+    borderBottomStyle: 'solid' as const,
     borderBottomColor: WhatsAppColors.border,
     display: 'flex',
     justifyContent: 'space-between',

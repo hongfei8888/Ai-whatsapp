@@ -20,6 +20,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { api } from '@/lib/api';
+import { useAccount } from '@/lib/account-context';
 
 interface AccountDialogProps {
   open: boolean;
@@ -37,6 +38,7 @@ interface Account {
 }
 
 export function AccountDialog({ open, onOpenChange }: AccountDialogProps) {
+  const { currentAccountId } = useAccount();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +55,11 @@ export function AccountDialog({ open, onOpenChange }: AccountDialogProps) {
     
     try {
       // 获取当前状态
-      const status = await api.getStatus();
+      if (!currentAccountId) {
+        setError('请先选择账号');
+        return;
+      }
+      const status = await api.accounts.getStatus(currentAccountId);
       
       // 模拟账号数据（实际项目中应该从API获取）
       const mockAccounts: Account[] = [];
@@ -131,7 +137,9 @@ export function AccountDialog({ open, onOpenChange }: AccountDialogProps) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={() => {
+      // 🔒 禁止通过遮罩层或ESC键关闭 - 只能通过关闭按钮
+    }}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center gap-3">

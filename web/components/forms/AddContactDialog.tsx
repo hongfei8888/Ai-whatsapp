@@ -70,7 +70,9 @@ export function AddContactDialog({ onSuccess, trigger }: AddContactDialogProps) 
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={() => {
+      // 🔒 禁止通过遮罩层或ESC键关闭 - 只能通过取消/关闭按钮
+    }}>
       <DialogTrigger asChild>
         {trigger || (
           <Button className="gap-2">

@@ -7,6 +7,35 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ==================== 多账号支持 ====================
+
+model Account {
+  id          String    @id @default(cuid())
+  name        String                          // 账号名称，如"客服账号"
+  phoneNumber String?                         // WhatsApp号码
+  status      String    @default("offline")   // online, offline, connecting
+  sessionPath String    @unique               // 会话数据存储路径
+  isActive    Boolean   @default(true)        // 是否启用
+  lastOnline  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  // 关联数据
+  contacts          Contact[]
+  threads           Thread[]
+  messages          Message[]
+  templates         MessageTemplate[]
+  knowledgeBases    KnowledgeBase[]
+  campaigns         Campaign[]
+  groups            WhatsAppGroup[]
+  batchOperations   BatchOperation[]
+  translations      Translation[]
+  joinGroupTasks    JoinGroupTask[]
+  groupBroadcasts   GroupBroadcast[]
+  
+  @@index([status, isActive])
+}
+
 enum MessageDirection {
   IN
   OUT
@@ -45,12 +74,19 @@ model Contact {
   avatarUrl      String?   // 头像URL
 
   id             String    @id @default(cuid())
-  phoneE164      String    @unique
+  phoneE164      String
   name           String?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
+  
+  accountId      String
+  account        Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  
   threads        Thread[]
   campaignRecipients CampaignRecipient[]
+  
+  @@unique([accountId, phoneE164])
+  @@index([accountId])
 }
 
 model Thread {
@@ -64,6 +100,10 @@ model Thread {
   lastBotAt    DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
+  
+  accountId    String
+  account      Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  
   contact      Contact   @relation(fields: [contactId], references: [id])
   messages     Message[]
 
@@ -89,6 +129,7 @@ model Thread {
   // 会话备注
   notes        String?
 
+  @@index([accountId])
   @@index([isPinned, updatedAt])
   @@index([isArchived])
 }
@@ -96,12 +137,16 @@ model Thread {
 model Message {
   id          String           @id @default(cuid())
   threadId    String
-  externalId  String?          @unique
+  externalId  String?
   direction   MessageDirection
   text        String?
   translatedText String?       // 翻译后的文本
   status      MessageStatus    @default(SENT)
   createdAt   DateTime         @default(now())
+  
+  accountId   String
+  account     Account          @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  
   thread      Thread           @relation(fields: [threadId], references: [id])
 
   // 媒体文件支持
@@ -141,6 +186,8 @@ model Message {
   deliveredAt   DateTime?      // 送达时间
   readAt        DateTime?      // 已读时间
 
+  @@unique([accountId, externalId])
+  @@index([accountId])
   @@index([threadId, createdAt])
   @@index([replyToId])
 }
@@ -171,8 +218,13 @@ model MessageTemplate {
   sortOrder   Int      @default(0) // 排序顺序
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  
+  accountId   String
+  account     Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  
   campaigns   Campaign[]
 
+  @@index([accountId])
   @@index([category, isActive])
   @@index([usageCount, lastUsedAt])
 }
@@ -204,8 +256,14 @@ model Campaign {
   failed         Int             @default(0)
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
+  
+  accountId      String
+  account        Account         @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  
   template       MessageTemplate? @relation(fields: [templateId], references: [id])
   recipients     CampaignRecipient[]
+  
+  @@index([accountId])
 }
 
 model CampaignRecipient {
@@ -246,8 +304,13 @@ model BatchOperation {
   startedAt     DateTime?
   completedAt   DateTime?
   createdBy     String    @default("system")
+  
+  accountId     String
+  account       Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  
   items         BatchOperationItem[]
 
+  @@index([accountId])
   @@index([type, status])
 }
 
@@ -281,7 +344,11 @@ model KnowledgeBase {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   createdBy   String    @default("system")
+  
+  accountId   String
+  account     Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
+  @@index([accountId])
   @@index([category, isActive])
   @@index([priority, usageCount])
 }
@@ -305,12 +372,162 @@ model Translation {
   translatedText String   // 译文
   sourceLang     String   // 源语言（auto-detect）
   targetLang     String   // 目标语言（zh）
-  textHash       String   @unique // MD5 hash for caching
+  textHash       String   // MD5 hash for caching
   provider       String   @default("baidu") // 翻译服务提供商
   usageCount     Int      @default(1) // 使用次数
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+  
+  accountId      String
+  account        Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
+  @@unique([accountId, textHash])
+  @@index([accountId])
   @@index([textHash])
   @@map("translations")
+}
+
+// ==================== 社群营销系统 ====================
+
+// 批量进群任务表
+model JoinGroupTask {
+  id              String    @id @default(cuid())
+  title           String
+  inviteLinks     Json      // 邀请链接数组
+  totalLinks      Int       @default(0)
+  status          String    @default("pending")  // pending, running, completed, failed, cancelled
+  progress        Int       @default(0)
+  joinedCount     Int       @default(0)
+  failedCount     Int       @default(0)
+  config          Json?     // 配置（延迟等）
+  result          Json?     // 执行结果详情
+  errorMessage    String?
+  createdAt       DateTime  @default(now())
+  startedAt       DateTime?
+  completedAt     DateTime?
+  
+  accountId       String
+  account         Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  
+  @@index([accountId])
+  @@index([status, createdAt])
+}
+
+// WhatsApp群组表
+model WhatsAppGroup {
+  id              String    @id @default(cuid())
+  groupId         String              // WhatsApp群组ID
+  name            String
+  description     String?
+  avatarUrl       String?
+  memberCount     Int       @default(0)
+  tags            Json?                          // 群组标签
+  isActive        Boolean   @default(true)
+  isMonitoring    Boolean   @default(false)      // 是否开启监控
+  keywords        Json?                          // 监控关键词
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  accountId       String
+  account         Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  
+  members         GroupMember[]
+  messages        GroupMessage[]
+  activities      GroupActivity[]
+  broadcasts      GroupBroadcast[]
+  
+  @@unique([accountId, groupId])
+  @@index([accountId])
+  @@index([groupId])
+  @@index([isActive, isMonitoring])
+}
+
+// 群发记录表
+model GroupBroadcast {
+  id              String    @id @default(cuid())
+  title           String
+  message         String
+  mediaUrl        String?
+  targetGroupIds  Json                           // 目标群组ID数组
+  totalGroups     Int       @default(0)
+  status          String    @default("pending")  // pending, running, paused, completed, failed, cancelled
+  progress        Int       @default(0)
+  sentCount       Int       @default(0)
+  failedCount     Int       @default(0)
+  scheduledAt     DateTime?                      // 定时发送时间
+  result          Json?                          // 发送结果详情
+  errorMessage    String?
+  createdAt       DateTime  @default(now())
+  startedAt       DateTime?
+  completedAt     DateTime?
+  
+  accountId       String
+  account         Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  
+  groups          WhatsAppGroup[]
+  
+  @@index([accountId])
+  @@index([status, scheduledAt])
+  @@index([createdAt])
+}
+
+// 群成员表
+model GroupMember {
+  id              String    @id @default(cuid())
+  groupId         String
+  phoneE164       String
+  displayName     String?
+  profilePicUrl   String?                          // 🖼️ WhatsApp 头像 URL
+  role            String    @default("member")   // member, admin, superadmin
+  messageCount    Int       @default(0)
+  lastMessageAt   DateTime?
+  joinedAt        DateTime  @default(now())
+  isActive        Boolean   @default(true)
+  leftAt          DateTime?
+  
+  group           WhatsAppGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  
+  @@unique([groupId, phoneE164])
+  @@index([groupId, isActive])
+  @@index([phoneE164])
+}
+
+// 群消息表
+model GroupMessage {
+  id              String    @id @default(cuid())
+  groupId         String
+  messageId       String    @unique
+  fromPhone       String
+  fromName        String?
+  text            String?
+  mediaType       String?
+  mediaUrl        String?
+  mediaMimeType   String?    // 🖼️ MIME 类型
+  mediaFileName   String?    // 🖼️ 服务器文件名
+  originalFileName String?   // 🖼️ 原始文件名
+  thumbnailUrl    String?    // 🖼️ 缩略图路径
+  keywords        Json?                          // 命中的关键词
+  isViolation     Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  
+  group           WhatsAppGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  
+  @@index([groupId, createdAt])
+  @@index([fromPhone])
+  @@index([isViolation])
+}
+
+// 群组活动记录表
+model GroupActivity {
+  id              String    @id @default(cuid())
+  groupId         String
+  type            String                         // join, leave, add, remove, promote, message
+  actorPhone      String?
+  targetPhone     String?
+  data            Json?
+  createdAt       DateTime  @default(now())
+  
+  group           WhatsAppGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  
+  @@index([groupId, type, createdAt])
 }

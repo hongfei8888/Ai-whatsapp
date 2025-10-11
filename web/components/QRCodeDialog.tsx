@@ -9,16 +9,18 @@ interface QRCodeDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+  accountId: string | null;
 }
 
 const overlayStyle: React.CSSProperties = {
   position: 'fixed',
   inset: 0,
-  backgroundColor: 'rgba(0,0,0,0.5)',
+  backgroundColor: 'rgba(0,0,0,0.85)',
+  backdropFilter: 'blur(8px)',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  zIndex: 1000,
+  zIndex: 9998,
 };
 
 const dialogStyle: React.CSSProperties = {
@@ -26,9 +28,13 @@ const dialogStyle: React.CSSProperties = {
   borderRadius: '16px',
   padding: '24px',
   width: 'min(360px, 90vw)',
-  boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+  boxShadow: '0 30px 60px -15px rgba(0, 0, 0, 0.6), 0 0 0 2px rgba(0, 0, 0, 0.12)',
+  border: '2px solid rgba(0, 0, 0, 0.08)',
   textAlign: 'center',
   fontFamily: '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif',
+  position: 'relative',
+  zIndex: 9999,
+  opacity: 1,
 };
 
 const qrPlaceholderStyle: React.CSSProperties = {
@@ -45,17 +51,22 @@ const qrPlaceholderStyle: React.CSSProperties = {
   margin: '0 auto 16px',
 };
 
-export default function QRCodeDialog({ isOpen, onClose, onSuccess }: QRCodeDialogProps) {
+export default function QRCodeDialog({ isOpen, onClose, onSuccess, accountId }: QRCodeDialogProps) {
   const [qrImage, setQrImage] = useState<string | null>(null);
   const [status, setStatus] = useState<string>('正在获取二维码…');
   const [isLoading, setIsLoading] = useState(false);
 
   const fetchQRCode = useCallback(async () => {
+    if (!accountId) {
+      setStatus('账号ID不存在');
+      return;
+    }
+    
     setIsLoading(true);
     try {
-      const result = await api.getQRCode();
-      const statusText = [result.status, result.state].filter(Boolean).join(' / ');
-      setStatus(statusText ? `状态: ${statusText}` : '等待二维码…');
+      const result = await api.accounts.getQRCode(accountId);
+      const statusText = result.qr ? '待扫码' : '等待二维码…';
+      setStatus(statusText);
 
       if (result.qr) {
         try {
@@ -69,20 +80,21 @@ export default function QRCodeDialog({ isOpen, onClose, onSuccess }: QRCodeDialo
         }
       } else {
         setQrImage(null);
-        // 如果没有二维码，尝试启动登录流程
-        if (!result.qr && result.status?.toUpperCase() !== 'READY') {
+        // 检查账号状态
+        try {
+          const statusResult = await api.accounts.getStatus(accountId);
+          if (statusResult.status === 'online') {
+            setStatus('✅ 账号已登录！');
+            setTimeout(() => {
+              onSuccess?.();
+              onClose();
+            }, 1500);
+          } else {
+            setStatus('正在初始化 WhatsApp 客户端...');
+          }
+        } catch (err) {
           setStatus('正在初始化 WhatsApp 客户端...');
         }
-      }
-
-      if (result.status?.toUpperCase() === 'READY') {
-        setStatus('✅ 登录成功！正在刷新页面...');
-        setTimeout(() => {
-          onSuccess?.();
-          onClose();
-          // 刷新页面以更新状态
-          window.location.reload();
-        }, 1500);
       }
     } catch (error) {
       console.error('Failed to fetch QR code', error);
@@ -92,7 +104,7 @@ export default function QRCodeDialog({ isOpen, onClose, onSuccess }: QRCodeDialo
     } finally {
       setIsLoading(false);
     }
-  }, [onClose, onSuccess]);
+  }, [accountId, onClose, onSuccess]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -135,8 +147,8 @@ export default function QRCodeDialog({ isOpen, onClose, onSuccess }: QRCodeDialo
   }
 
   return (
-    <div style={overlayStyle} onClick={onClose}>
-      <div style={dialogStyle} onClick={(event) => event.stopPropagation()}>
+    <div style={overlayStyle}>
+      <div style={dialogStyle}>
         <h2 style={{ fontSize: '20px', fontWeight: 600, color: '#111827', marginBottom: 16 }}>WhatsApp 登录</h2>
         <p style={{ fontSize: '14px', color: '#6B7280', marginBottom: 16 }}>{status}</p>
 

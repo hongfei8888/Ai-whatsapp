@@ -107,6 +107,7 @@ export class TranslationService {
 
   // 翻译文本（带缓存）
   static async translateText(
+    accountId: string,
     text: string,
     targetLang: string = 'zh'
   ): Promise<TranslationResult> {
@@ -125,7 +126,12 @@ export class TranslationService {
 
     // 查询缓存
     const cached = await prisma.translation.findUnique({
-      where: { textHash },
+      where: { 
+        accountId_textHash: {
+          accountId,
+          textHash
+        }
+      },
     });
 
     if (cached) {
@@ -151,6 +157,7 @@ export class TranslationService {
     // 保存到数据库
     await prisma.translation.create({
       data: {
+        accountId,
         originalText: text,
         translatedText,
         sourceLang,
@@ -192,7 +199,7 @@ export class TranslationService {
       }
 
       try {
-        const { translatedText } = await this.translateText(message.text);
+        const { translatedText } = await this.translateText(message.accountId, message.text);
         
         const updated = await prisma.message.update({
           where: { id: message.id },

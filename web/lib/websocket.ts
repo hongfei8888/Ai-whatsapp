@@ -4,7 +4,7 @@ interface WebSocketMessage {
   timestamp: number;
 }
 
-interface WebSocketCallbacks {
+export interface WebSocketCallbacks {
   onWhatsAppStatus?: (status: any) => void;
   onQRUpdate?: (qr: string) => void;
   onNewMessage?: (message: any) => void;
@@ -12,6 +12,7 @@ interface WebSocketCallbacks {
   onConnected?: () => void;
   onDisconnected?: () => void;
   onError?: (error: any) => void;
+  onGroupMessage?: (message: any) => void;
 }
 
 export class WebSocketClient {
@@ -109,10 +110,11 @@ export class WebSocketClient {
       // 如果错误对象有可读属性，尝试记录它们
       if (error && typeof error === 'object') {
         try {
+          const errorObj = error as any;
           const safeError = {
-            type: error.type || 'unknown',
-            code: error.code || 'unknown',
-            message: error.message || 'No message'
+            type: errorObj.type || 'unknown',
+            code: errorObj.code || 'unknown',
+            message: errorObj.message || 'No message'
           };
           console.error('WebSocket原始错误:', safeError);
         } catch (e) {

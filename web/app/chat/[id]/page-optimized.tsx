@@ -119,10 +119,10 @@ export default function ChatPage() {
   const messageContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const lastMessageRef = useRef<HTMLDivElement>(null);
-  const draftSaveTimerRef = useRef<NodeJS.Timeout>();
+  const draftSaveTimerRef = useRef<NodeJS.Timeout | undefined>(undefined);
   
   // WebSocket 连接
-  const { connected, lastMessage } = useWebSocket();
+  const { isConnected, lastMessage } = useWebSocket();
   
   // 初始化加载
   useEffect(() => {
@@ -211,13 +211,13 @@ export default function ChatPage() {
     
     try {
       setState((prev) => ({ ...prev, loading: true }));
-      const data = await api.getThread(threadId);
+      const data = await api.getThreadMessages(threadId);
       
       setState((prev) => ({
         ...prev,
         currentThread: data,
         messages: data.messages || [],
-        autoTranslateEnabled: data.autoTranslate || false,
+        autoTranslateEnabled: (data as any).autoTranslate || false,
         loading: false,
       }));
       
@@ -370,10 +370,14 @@ export default function ChatPage() {
       setState((prev) => ({ ...prev, sending: true }));
       
       // 如果有引用消息，使用引用API
-      if (state.replyToMessage) {
-        await api.messages.reply(threadId, inputMessage.trim(), state.replyToMessage.id);
-      } else {
-        await api.sendMessage(threadId, inputMessage.trim());
+      if (state.replyToMessage && state.currentThread?.contact?.phoneE164) {
+        await api.messages.reply({
+          threadId,
+          replyToId: state.replyToMessage.id,
+          text: inputMessage.trim(),
+        });
+      } else if (state.currentThread?.contact?.phoneE164) {
+        await api.sendMessage(state.currentThread.contact.phoneE164, inputMessage.trim());
       }
       
       // 清空输入和引用
@@ -401,20 +405,16 @@ export default function ChatPage() {
     if (!threadId) return;
     
     try {
-      // 创建媒体消息
-      const mediaMessage = {
-        threadId,
-        text: result.fileName || '',
-        mediaUrl: result.url,
-        mediaType: result.type,
-        mediaMimeType: result.mimeType,
-        mediaSize: result.size,
-        mediaFileName: result.fileName,
-        thumbnailUrl: result.thumbnailUrl,
-      };
-      
       // 发送媒体消息
-      await api.sendMessage(threadId, '', mediaMessage);
+      if (state.currentThread?.contact?.phoneE164) {
+        await api.sendMediaMessage(
+          state.currentThread.contact.phoneE164,
+          result.fileName,
+          result.type,
+          '',
+          result.fileName
+        );
+      }
       
       // 关闭上传器
       setState((prev) => ({ ...prev, showMediaUploader: false }));
@@ -545,7 +545,7 @@ export default function ChatPage() {
           <div
             style={{
               maxWidth: '65%',
-              backgroundColor: isOwn ? WhatsAppColors.ownMessage : WhatsAppColors.otherMessage,
+              backgroundColor: isOwn ? WhatsAppColors.messageSent : WhatsAppColors.messageReceived,
               borderRadius: '8px',
               padding: '8px 12px',
               position: 'relative',

@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Copy } from 'lucide-react';
 
 import { api } from '@/lib/api';
+import { useAccount } from '@/lib/account-context';
 import type { Contact } from '@/lib/types';
 import { useToast } from '@/components/ui/use-toast';
 import { Badge } from '@/components/ui/badge';
@@ -45,16 +46,24 @@ const outreachSchema = z.object({
 });
 
 export function ContactsTable({ initialContacts }: ContactsTableProps) {
+  const { currentAccountId } = useAccount();
   const { toast } = useToast();
   const [contacts, setContacts] = useState(initialContacts);
   const [query, setQuery] = useState('');
   const [isRefreshing, setRefreshing] = useState(false);
 
   const refreshContacts = async () => {
+    if (!currentAccountId) {
+      toast({ variant: 'destructive', title: '请先选择账号' });
+      return;
+    }
+    
     setRefreshing(true);
     try {
-      const data = await api.getContacts();
-      setContacts(data.contacts);
+      // 🔄 使用threads API获取联系人
+      const threadsData = await api.getThreads();
+      const contactsList = (threadsData.threads || []).map((t: any) => t.contact).filter(Boolean);
+      setContacts(contactsList);
     } catch (error) {
       toast({
         variant: 'destructive',
@@ -227,6 +236,7 @@ interface AddContactDialogProps {
 }
 
 function AddContactDialog({ onCreated }: AddContactDialogProps) {
+  const { currentAccountId } = useAccount();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const form = useForm<z.infer<typeof contactSchema>>({
@@ -236,12 +246,35 @@ function AddContactDialog({ onCreated }: AddContactDialogProps) {
   const isSubmitting = form.formState.isSubmitting;
 
   const handleSubmit = form.handleSubmit(async (values) => {
+    if (!currentAccountId) {
+      toast({ variant: 'destructive', title: '请先选择账号' });
+      return;
+    }
+    
     try {
-      await api.createContact(values);
-      toast({ variant: 'success', title: 'Contact created', description: 'Contact has been added.' });
-      form.reset();
-      setOpen(false);
-      await onCreated();
+      // ✅ 使用新的多账号contacts API创建联系人
+      const result = await api.contacts.create({
+        phoneE164: values.phoneE164,
+        name: values.name || undefined,
+        consent: true,
+      });
+      
+      if (result.ok) {
+        toast({ 
+          variant: 'default', 
+          title: '添加成功', 
+          description: '联系人已成功添加' 
+        });
+        form.reset();
+        setOpen(false);
+        await onCreated(); // 刷新列表
+      } else {
+        toast({ 
+          variant: 'destructive', 
+          title: '添加失败', 
+          description: '无法添加联系人，请重试' 
+        });
+      }
     } catch (error) {
       toast({
         variant: 'destructive',
