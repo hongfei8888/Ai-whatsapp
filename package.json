@@ -58,7 +58,7 @@
     "@fastify/cors": "^11.1.0",
     "@fastify/multipart": "^9.2.1",
     "@pedroslopez/moduleraid": "^5.0.2",
-    "@prisma/client": "^6.16.2",
+    "@prisma/client": "^6.18.0",
     "dotenv": "^16.6.1",
     "fastify": "^5.6.1",
     "fluent-ffmpeg": "2.1.3",
